@@ -1,0 +1,18 @@
+# data (downloaded by scripts/download_data.sh)
+data/raw/
+data/processed/
+# python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+# node
+node_modules/
+web/dist/
+# env / secrets
+.env
+.env.local
+*.pem
+serviceAccount*.json
+.DS_Store
+smoke-output/

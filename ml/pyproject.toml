@@ -1,0 +1,31 @@
+[project]
+name = "fallguard"
+version = "0.1.0"
+description = "Device-agnostic fall detection for phone and wearable accelerometers"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy", "pandas", "scipy", "scikit-learn", "lightgbm", "torch",
+  "onnx", "onnxruntime", "onnxmltools", "skl2onnx", "matplotlib", "tqdm",
+]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["fallguard"]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+# B905: zipped sequences are equal-length by construction; E501: long f-strings in report text
+ignore = ["B905", "E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
