@@ -1,0 +1,101 @@
+{
+  "fs": 20,
+  "pre": 30,
+  "post": 50,
+  "win": 80,
+  "peak_half_width": 10,
+  "refractory_s": 10.0,
+  "feature_names": [
+    "peak_mag",
+    "pre_min_mag",
+    "pre_mean_mag",
+    "pre_std_mag",
+    "post_mean_mag",
+    "post_std_mag",
+    "post_still_frac",
+    "max_jerk",
+    "mag_range",
+    "dyn_energy",
+    "sma_dynamic",
+    "freefall_to_impact_s",
+    "tilt_change_deg",
+    "post_vert_mean",
+    "post_tilt_mean_deg",
+    "horiz_peak",
+    "vert_peak",
+    "vert_min",
+    "impact_width_s",
+    "mag_kurtosis"
+  ],
+  "deployed_model": "ensemble",
+  "demo_subjects": [
+    "umafall:06",
+    "umafall:18"
+  ],
+  "positions": {
+    "phone": {
+      "trigger_g": 1.8,
+      "threshold": 0.93,
+      "models": {
+        "lightgbm": "phone_lightgbm.onnx",
+        "cnn": "phone_cnn.onnx"
+      },
+      "model_bytes": {
+        "lightgbm": 209782,
+        "cnn": 26851
+      },
+      "cnn_params": 6225,
+      "onnx_parity": {
+        "lightgbm_max_abs_diff": 8.591450750827789e-08,
+        "cnn_max_abs_diff": 1.5273690223693848e-07
+      },
+      "cv_metrics": {
+        "sensitivity": 0.9487,
+        "specificity": 1.0,
+        "false_alarms_per_hour": 0.0
+      },
+      "top_features": {
+        "tilt_change_deg": 0.6318666887510717,
+        "post_tilt_mean_deg": 0.15190366485146958,
+        "post_vert_mean": 0.11727827008251922,
+        "horiz_peak": 0.0426586259693637,
+        "peak_mag": 0.018648105006401884,
+        "dyn_energy": 0.008021183535870337,
+        "post_std_mag": 0.006272434908837275,
+        "mag_kurtosis": 0.004242079721257403
+      }
+    },
+    "wrist": {
+      "trigger_g": 2.4,
+      "threshold": 0.41,
+      "models": {
+        "lightgbm": "wrist_lightgbm.onnx",
+        "cnn": "wrist_cnn.onnx"
+      },
+      "model_bytes": {
+        "lightgbm": 183559,
+        "cnn": 26851
+      },
+      "cnn_params": 6225,
+      "onnx_parity": {
+        "lightgbm_max_abs_diff": 8.63510649651289e-08,
+        "cnn_max_abs_diff": 8.046627044677734e-07
+      },
+      "cv_metrics": {
+        "sensitivity": 0.9423,
+        "specificity": 0.9535,
+        "false_alarms_per_hour": 11.276
+      },
+      "top_features": {
+        "post_still_frac": 0.35808794169296365,
+        "peak_mag": 0.09573549325536959,
+        "sma_dynamic": 0.09217279647413011,
+        "post_mean_mag": 0.07249451495066611,
+        "impact_width_s": 0.055867660751840645,
+        "tilt_change_deg": 0.04845059998050869,
+        "dyn_energy": 0.04259840329970433,
+        "vert_min": 0.03707079025137248
+      }
+    }
+  }
+}

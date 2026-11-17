@@ -1,0 +1,226 @@
+[
+ {
+  "id": "umafall_06_Fall_backwardFall_1",
+  "title": "Backward fall",
+  "kind": "fall",
+  "activity": "backwardFall",
+  "subject": "umafall:06",
+  "duration_s": 14.8
+ },
+ {
+  "id": "umafall_06_Fall_backwardFall_2",
+  "title": "Backward fall",
+  "kind": "fall",
+  "activity": "backwardFall",
+  "subject": "umafall:06",
+  "duration_s": 14.8
+ },
+ {
+  "id": "umafall_06_Fall_forwardFall_2",
+  "title": "Forward fall",
+  "kind": "fall",
+  "activity": "forwardFall",
+  "subject": "umafall:06",
+  "duration_s": 14.7
+ },
+ {
+  "id": "umafall_06_Fall_forwardFall_3",
+  "title": "Forward fall",
+  "kind": "fall",
+  "activity": "forwardFall",
+  "subject": "umafall:06",
+  "duration_s": 14.9
+ },
+ {
+  "id": "umafall_06_Fall_lateralFall_1",
+  "title": "Sideways fall",
+  "kind": "fall",
+  "activity": "lateralFall",
+  "subject": "umafall:06",
+  "duration_s": 15.0
+ },
+ {
+  "id": "umafall_06_Fall_lateralFall_2",
+  "title": "Sideways fall",
+  "kind": "fall",
+  "activity": "lateralFall",
+  "subject": "umafall:06",
+  "duration_s": 14.9
+ },
+ {
+  "id": "umafall_06_ADL_Bending_1",
+  "title": "Bending to pick something up",
+  "kind": "adl",
+  "activity": "Bending",
+  "subject": "umafall:06",
+  "duration_s": 14.6
+ },
+ {
+  "id": "umafall_06_ADL_Bending_2",
+  "title": "Bending to pick something up",
+  "kind": "adl",
+  "activity": "Bending",
+  "subject": "umafall:06",
+  "duration_s": 14.8
+ },
+ {
+  "id": "umafall_06_ADL_Aplausing_1",
+  "title": "Clapping",
+  "kind": "adl",
+  "activity": "Aplausing",
+  "subject": "umafall:06",
+  "duration_s": 14.9
+ },
+ {
+  "id": "umafall_06_ADL_Aplausing_2",
+  "title": "Clapping",
+  "kind": "adl",
+  "activity": "Aplausing",
+  "subject": "umafall:06",
+  "duration_s": 14.9
+ },
+ {
+  "id": "umafall_18_ADL_GoDownstairs_1",
+  "title": "Going downstairs",
+  "kind": "adl",
+  "activity": "GoDownstairs",
+  "subject": "umafall:18",
+  "duration_s": 14.8
+ },
+ {
+  "id": "umafall_18_ADL_GoDownstairs_2",
+  "title": "Going downstairs",
+  "kind": "adl",
+  "activity": "GoDownstairs",
+  "subject": "umafall:18",
+  "duration_s": 14.8
+ },
+ {
+  "id": "umafall_06_ADL_Hopping_1",
+  "title": "Hopping",
+  "kind": "adl",
+  "activity": "Hopping",
+  "subject": "umafall:06",
+  "duration_s": 14.9
+ },
+ {
+  "id": "umafall_06_ADL_Hopping_2",
+  "title": "Hopping",
+  "kind": "adl",
+  "activity": "Hopping",
+  "subject": "umafall:06",
+  "duration_s": 14.9
+ },
+ {
+  "id": "umafall_06_ADL_Jogging_1",
+  "title": "Jogging",
+  "kind": "adl",
+  "activity": "Jogging",
+  "subject": "umafall:06",
+  "duration_s": 14.9
+ },
+ {
+  "id": "umafall_06_ADL_Jogging_2",
+  "title": "Jogging",
+  "kind": "adl",
+  "activity": "Jogging",
+  "subject": "umafall:06",
+  "duration_s": 15.0
+ },
+ {
+  "id": "umafall_06_ADL_LyingDown_OnABed_1",
+  "title": "Lying down on a bed",
+  "kind": "adl",
+  "activity": "LyingDown_OnABed",
+  "subject": "umafall:06",
+  "duration_s": 14.9
+ },
+ {
+  "id": "umafall_06_ADL_LyingDown_OnABed_2",
+  "title": "Lying down on a bed",
+  "kind": "adl",
+  "activity": "LyingDown_OnABed",
+  "subject": "umafall:06",
+  "duration_s": 14.9
+ },
+ {
+  "id": "umafall_06_ADL_OpeningDoor_1",
+  "title": "Opening a door",
+  "kind": "adl",
+  "activity": "OpeningDoor",
+  "subject": "umafall:06",
+  "duration_s": 14.8
+ },
+ {
+  "id": "umafall_06_ADL_OpeningDoor_2",
+  "title": "Opening a door",
+  "kind": "adl",
+  "activity": "OpeningDoor",
+  "subject": "umafall:06",
+  "duration_s": 14.8
+ },
+ {
+  "id": "umafall_06_ADL_MakingACall_1",
+  "title": "Phone call",
+  "kind": "adl",
+  "activity": "MakingACall",
+  "subject": "umafall:06",
+  "duration_s": 14.8
+ },
+ {
+  "id": "umafall_06_ADL_MakingACall_2",
+  "title": "Phone call",
+  "kind": "adl",
+  "activity": "MakingACall",
+  "subject": "umafall:06",
+  "duration_s": 14.8
+ },
+ {
+  "id": "umafall_06_ADL_HandsUp_1",
+  "title": "Raising hands",
+  "kind": "adl",
+  "activity": "HandsUp",
+  "subject": "umafall:06",
+  "duration_s": 15.0
+ },
+ {
+  "id": "umafall_06_ADL_HandsUp_2",
+  "title": "Raising hands",
+  "kind": "adl",
+  "activity": "HandsUp",
+  "subject": "umafall:06",
+  "duration_s": 14.8
+ },
+ {
+  "id": "umafall_06_ADL_Sitting_GettingUpOnAChair_1",
+  "title": "Sit down & stand up",
+  "kind": "adl",
+  "activity": "Sitting_GettingUpOnAChair",
+  "subject": "umafall:06",
+  "duration_s": 14.9
+ },
+ {
+  "id": "umafall_06_ADL_Sitting_GettingUpOnAChair_2",
+  "title": "Sit down & stand up",
+  "kind": "adl",
+  "activity": "Sitting_GettingUpOnAChair",
+  "subject": "umafall:06",
+  "duration_s": 14.8
+ },
+ {
+  "id": "umafall_06_ADL_Walking_1",
+  "title": "Walking",
+  "kind": "adl",
+  "activity": "Walking",
+  "subject": "umafall:06",
+  "duration_s": 14.9
+ },
+ {
+  "id": "umafall_06_ADL_Walking_2",
+  "title": "Walking",
+  "kind": "adl",
+  "activity": "Walking",
+  "subject": "umafall:06",
+  "duration_s": 14.9
+ }
+]
