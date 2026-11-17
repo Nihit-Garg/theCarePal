@@ -1,0 +1,1798 @@
+{
+  "phone": {
+    "position": "phone",
+    "n_recordings": 5251,
+    "n_subjects": 57,
+    "folds": 5,
+    "inner_folds": 4,
+    "target_sensitivity": 0.95,
+    "trigger_g_per_fold": [
+      1.85,
+      1.8,
+      1.85,
+      1.8,
+      1.8
+    ],
+    "models": {
+      "threshold_only": {
+        "sensitivity": 0.9487,
+        "specificity": 0.6502,
+        "false_alarms_per_hour": 118.69,
+        "tp": 1903.0,
+        "fn": 103.0,
+        "tn": 2110.0,
+        "fp_trials": 1135.0,
+        "false_alarms": 1989.0,
+        "adl_hours": 16.758,
+        "fold_std": {
+          "sensitivity": 0.0052,
+          "specificity": 0.027,
+          "false_alarms_per_hour": 6.7548
+        },
+        "thresholds_per_fold": [
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "subgroups": {
+          "umafall": {
+            "sensitivity": 1.0,
+            "specificity": 0.619,
+            "false_alarms_per_hour": 122.353,
+            "tp": 208.0,
+            "fn": 0.0,
+            "tn": 333.0,
+            "fp_trials": 205.0,
+            "false_alarms": 272.0,
+            "adl_hours": 2.223
+          },
+          "elderly_60plus": {
+            "sensitivity": 0.8133,
+            "specificity": 0.7508,
+            "false_alarms_per_hour": 105.145,
+            "tp": 61.0,
+            "fn": 14.0,
+            "tn": 702.0,
+            "fp_trials": 233.0,
+            "false_alarms": 546.0,
+            "adl_hours": 5.193
+          },
+          "sisfall": {
+            "sensitivity": 0.9427,
+            "specificity": 0.6564,
+            "false_alarms_per_hour": 118.121,
+            "tp": 1695.0,
+            "fn": 103.0,
+            "tn": 1777.0,
+            "fp_trials": 930.0,
+            "false_alarms": 1717.0,
+            "adl_hours": 14.536
+          }
+        },
+        "false_alarms_by_activity": {
+          "D03": 373,
+          "D04": 362,
+          "D11": 156,
+          "D06": 141,
+          "D08": 121,
+          "D18": 120,
+          "D19": 120,
+          "D02": 116,
+          "Hopping": 85,
+          "D10": 85,
+          "D05": 74,
+          "Jogging": 54,
+          "Walking": 50,
+          "MakingACall": 36,
+          "D14": 24,
+          "GoDownstairs": 17,
+          "D09": 12,
+          "GoUpstairs": 9,
+          "OpeningDoor": 8,
+          "Sitting_GettingUpOnAChair": 8,
+          "D13": 7,
+          "D01": 6,
+          "LyingDown_OnABed": 5,
+          "Aplausing": 0,
+          "HandsUp": 0,
+          "Bending": 0,
+          "D07": 0,
+          "D12": 0,
+          "D15": 0,
+          "D16": 0,
+          "D17": 0
+        },
+        "curve": null
+      },
+      "lightgbm": {
+        "sensitivity": 0.9467,
+        "specificity": 0.996,
+        "false_alarms_per_hour": 0.776,
+        "tp": 1899.0,
+        "fn": 107.0,
+        "tn": 3232.0,
+        "fp_trials": 13.0,
+        "false_alarms": 13.0,
+        "adl_hours": 16.758,
+        "fold_std": {
+          "sensitivity": 0.0261,
+          "specificity": 0.0034,
+          "false_alarms_per_hour": 0.6661
+        },
+        "thresholds_per_fold": [
+          0.96,
+          0.91,
+          0.94,
+          0.92,
+          0.94
+        ],
+        "subgroups": {
+          "umafall": {
+            "sensitivity": 0.9279,
+            "specificity": 0.987,
+            "false_alarms_per_hour": 3.149,
+            "tp": 193.0,
+            "fn": 15.0,
+            "tn": 531.0,
+            "fp_trials": 7.0,
+            "false_alarms": 7.0,
+            "adl_hours": 2.223
+          },
+          "elderly_60plus": {
+            "sensitivity": 0.7467,
+            "specificity": 1.0,
+            "false_alarms_per_hour": 0.0,
+            "tp": 56.0,
+            "fn": 19.0,
+            "tn": 935.0,
+            "fp_trials": 0.0,
+            "false_alarms": 0.0,
+            "adl_hours": 5.193
+          },
+          "sisfall": {
+            "sensitivity": 0.9488,
+            "specificity": 0.9978,
+            "false_alarms_per_hour": 0.413,
+            "tp": 1706.0,
+            "fn": 92.0,
+            "tn": 2701.0,
+            "fp_trials": 6.0,
+            "false_alarms": 6.0,
+            "adl_hours": 14.536
+          }
+        },
+        "false_alarms_by_activity": {
+          "MakingACall": 6,
+          "D11": 3,
+          "D14": 3,
+          "Hopping": 1,
+          "Aplausing": 0,
+          "HandsUp": 0,
+          "OpeningDoor": 0,
+          "Sitting_GettingUpOnAChair": 0,
+          "Walking": 0,
+          "Bending": 0,
+          "Jogging": 0,
+          "LyingDown_OnABed": 0,
+          "GoDownstairs": 0,
+          "GoUpstairs": 0,
+          "D01": 0,
+          "D02": 0,
+          "D03": 0,
+          "D04": 0,
+          "D05": 0,
+          "D06": 0,
+          "D07": 0,
+          "D08": 0,
+          "D09": 0,
+          "D10": 0,
+          "D12": 0,
+          "D13": 0,
+          "D15": 0,
+          "D16": 0,
+          "D17": 0,
+          "D18": 0,
+          "D19": 0
+        },
+        "curve": [
+          {
+            "threshold": 0.05,
+            "sensitivity": 0.9885,
+            "false_alarms_per_hour": 4.595
+          },
+          {
+            "threshold": 0.075,
+            "sensitivity": 0.9875,
+            "false_alarms_per_hour": 4.237
+          },
+          {
+            "threshold": 0.1,
+            "sensitivity": 0.9865,
+            "false_alarms_per_hour": 3.819
+          },
+          {
+            "threshold": 0.125,
+            "sensitivity": 0.987,
+            "false_alarms_per_hour": 3.461
+          },
+          {
+            "threshold": 0.15,
+            "sensitivity": 0.987,
+            "false_alarms_per_hour": 3.401
+          },
+          {
+            "threshold": 0.175,
+            "sensitivity": 0.9865,
+            "false_alarms_per_hour": 3.222
+          },
+          {
+            "threshold": 0.2,
+            "sensitivity": 0.9865,
+            "false_alarms_per_hour": 2.983
+          },
+          {
+            "threshold": 0.225,
+            "sensitivity": 0.985,
+            "false_alarms_per_hour": 2.924
+          },
+          {
+            "threshold": 0.25,
+            "sensitivity": 0.9845,
+            "false_alarms_per_hour": 2.745
+          },
+          {
+            "threshold": 0.275,
+            "sensitivity": 0.9845,
+            "false_alarms_per_hour": 2.685
+          },
+          {
+            "threshold": 0.3,
+            "sensitivity": 0.9835,
+            "false_alarms_per_hour": 2.566
+          },
+          {
+            "threshold": 0.325,
+            "sensitivity": 0.9831,
+            "false_alarms_per_hour": 2.387
+          },
+          {
+            "threshold": 0.35,
+            "sensitivity": 0.9831,
+            "false_alarms_per_hour": 2.327
+          },
+          {
+            "threshold": 0.375,
+            "sensitivity": 0.9826,
+            "false_alarms_per_hour": 2.327
+          },
+          {
+            "threshold": 0.4,
+            "sensitivity": 0.9821,
+            "false_alarms_per_hour": 2.327
+          },
+          {
+            "threshold": 0.425,
+            "sensitivity": 0.9821,
+            "false_alarms_per_hour": 2.029
+          },
+          {
+            "threshold": 0.45,
+            "sensitivity": 0.9816,
+            "false_alarms_per_hour": 1.969
+          },
+          {
+            "threshold": 0.475,
+            "sensitivity": 0.9816,
+            "false_alarms_per_hour": 1.969
+          },
+          {
+            "threshold": 0.5,
+            "sensitivity": 0.9816,
+            "false_alarms_per_hour": 1.969
+          },
+          {
+            "threshold": 0.525,
+            "sensitivity": 0.9811,
+            "false_alarms_per_hour": 1.909
+          },
+          {
+            "threshold": 0.55,
+            "sensitivity": 0.9806,
+            "false_alarms_per_hour": 1.85
+          },
+          {
+            "threshold": 0.575,
+            "sensitivity": 0.9806,
+            "false_alarms_per_hour": 1.79
+          },
+          {
+            "threshold": 0.6,
+            "sensitivity": 0.9786,
+            "false_alarms_per_hour": 1.73
+          },
+          {
+            "threshold": 0.625,
+            "sensitivity": 0.9781,
+            "false_alarms_per_hour": 1.671
+          },
+          {
+            "threshold": 0.65,
+            "sensitivity": 0.9771,
+            "false_alarms_per_hour": 1.611
+          },
+          {
+            "threshold": 0.675,
+            "sensitivity": 0.9761,
+            "false_alarms_per_hour": 1.492
+          },
+          {
+            "threshold": 0.7,
+            "sensitivity": 0.9741,
+            "false_alarms_per_hour": 1.372
+          },
+          {
+            "threshold": 0.725,
+            "sensitivity": 0.9716,
+            "false_alarms_per_hour": 1.372
+          },
+          {
+            "threshold": 0.75,
+            "sensitivity": 0.9706,
+            "false_alarms_per_hour": 1.372
+          },
+          {
+            "threshold": 0.775,
+            "sensitivity": 0.9686,
+            "false_alarms_per_hour": 1.372
+          },
+          {
+            "threshold": 0.8,
+            "sensitivity": 0.9681,
+            "false_alarms_per_hour": 1.372
+          },
+          {
+            "threshold": 0.825,
+            "sensitivity": 0.9661,
+            "false_alarms_per_hour": 1.313
+          },
+          {
+            "threshold": 0.85,
+            "sensitivity": 0.9641,
+            "false_alarms_per_hour": 1.134
+          },
+          {
+            "threshold": 0.875,
+            "sensitivity": 0.9626,
+            "false_alarms_per_hour": 1.134
+          },
+          {
+            "threshold": 0.9,
+            "sensitivity": 0.9591,
+            "false_alarms_per_hour": 0.955
+          },
+          {
+            "threshold": 0.925,
+            "sensitivity": 0.9536,
+            "false_alarms_per_hour": 0.895
+          },
+          {
+            "threshold": 0.95,
+            "sensitivity": 0.9467,
+            "false_alarms_per_hour": 0.776
+          },
+          {
+            "threshold": 0.975,
+            "sensitivity": 0.9317,
+            "false_alarms_per_hour": 0.597
+          }
+        ]
+      },
+      "cnn": {
+        "sensitivity": 0.9556,
+        "specificity": 0.9985,
+        "false_alarms_per_hour": 0.298,
+        "tp": 1917.0,
+        "fn": 89.0,
+        "tn": 3240.0,
+        "fp_trials": 5.0,
+        "false_alarms": 5.0,
+        "adl_hours": 16.758,
+        "fold_std": {
+          "sensitivity": 0.0241,
+          "specificity": 0.0013,
+          "false_alarms_per_hour": 0.2611
+        },
+        "thresholds_per_fold": [
+          0.99,
+          0.97,
+          0.98,
+          0.99,
+          0.99
+        ],
+        "subgroups": {
+          "umafall": {
+            "sensitivity": 0.9231,
+            "specificity": 0.9944,
+            "false_alarms_per_hour": 1.349,
+            "tp": 192.0,
+            "fn": 16.0,
+            "tn": 535.0,
+            "fp_trials": 3.0,
+            "false_alarms": 3.0,
+            "adl_hours": 2.223
+          },
+          "elderly_60plus": {
+            "sensitivity": 0.72,
+            "specificity": 1.0,
+            "false_alarms_per_hour": 0.0,
+            "tp": 54.0,
+            "fn": 21.0,
+            "tn": 935.0,
+            "fp_trials": 0.0,
+            "false_alarms": 0.0,
+            "adl_hours": 5.193
+          },
+          "sisfall": {
+            "sensitivity": 0.9594,
+            "specificity": 0.9993,
+            "false_alarms_per_hour": 0.138,
+            "tp": 1725.0,
+            "fn": 73.0,
+            "tn": 2705.0,
+            "fp_trials": 2.0,
+            "false_alarms": 2.0,
+            "adl_hours": 14.536
+          }
+        },
+        "false_alarms_by_activity": {
+          "Hopping": 2,
+          "D06": 2,
+          "LyingDown_OnABed": 1,
+          "Aplausing": 0,
+          "HandsUp": 0,
+          "MakingACall": 0,
+          "OpeningDoor": 0,
+          "Sitting_GettingUpOnAChair": 0,
+          "Walking": 0,
+          "Bending": 0,
+          "Jogging": 0,
+          "GoDownstairs": 0,
+          "GoUpstairs": 0,
+          "D01": 0,
+          "D02": 0,
+          "D03": 0,
+          "D04": 0,
+          "D05": 0,
+          "D07": 0,
+          "D08": 0,
+          "D09": 0,
+          "D10": 0,
+          "D11": 0,
+          "D12": 0,
+          "D13": 0,
+          "D14": 0,
+          "D15": 0,
+          "D16": 0,
+          "D17": 0,
+          "D18": 0,
+          "D19": 0
+        },
+        "curve": [
+          {
+            "threshold": 0.05,
+            "sensitivity": 0.988,
+            "false_alarms_per_hour": 4.416
+          },
+          {
+            "threshold": 0.075,
+            "sensitivity": 0.9875,
+            "false_alarms_per_hour": 3.64
+          },
+          {
+            "threshold": 0.1,
+            "sensitivity": 0.9875,
+            "false_alarms_per_hour": 3.461
+          },
+          {
+            "threshold": 0.125,
+            "sensitivity": 0.988,
+            "false_alarms_per_hour": 3.162
+          },
+          {
+            "threshold": 0.15,
+            "sensitivity": 0.988,
+            "false_alarms_per_hour": 2.864
+          },
+          {
+            "threshold": 0.175,
+            "sensitivity": 0.988,
+            "false_alarms_per_hour": 2.685
+          },
+          {
+            "threshold": 0.2,
+            "sensitivity": 0.988,
+            "false_alarms_per_hour": 2.506
+          },
+          {
+            "threshold": 0.225,
+            "sensitivity": 0.987,
+            "false_alarms_per_hour": 2.446
+          },
+          {
+            "threshold": 0.25,
+            "sensitivity": 0.9865,
+            "false_alarms_per_hour": 2.446
+          },
+          {
+            "threshold": 0.275,
+            "sensitivity": 0.987,
+            "false_alarms_per_hour": 2.327
+          },
+          {
+            "threshold": 0.3,
+            "sensitivity": 0.986,
+            "false_alarms_per_hour": 2.267
+          },
+          {
+            "threshold": 0.325,
+            "sensitivity": 0.986,
+            "false_alarms_per_hour": 2.208
+          },
+          {
+            "threshold": 0.35,
+            "sensitivity": 0.986,
+            "false_alarms_per_hour": 2.088
+          },
+          {
+            "threshold": 0.375,
+            "sensitivity": 0.986,
+            "false_alarms_per_hour": 1.85
+          },
+          {
+            "threshold": 0.4,
+            "sensitivity": 0.986,
+            "false_alarms_per_hour": 1.73
+          },
+          {
+            "threshold": 0.425,
+            "sensitivity": 0.986,
+            "false_alarms_per_hour": 1.73
+          },
+          {
+            "threshold": 0.45,
+            "sensitivity": 0.9855,
+            "false_alarms_per_hour": 1.73
+          },
+          {
+            "threshold": 0.475,
+            "sensitivity": 0.9855,
+            "false_alarms_per_hour": 1.611
+          },
+          {
+            "threshold": 0.5,
+            "sensitivity": 0.9855,
+            "false_alarms_per_hour": 1.551
+          },
+          {
+            "threshold": 0.525,
+            "sensitivity": 0.9855,
+            "false_alarms_per_hour": 1.492
+          },
+          {
+            "threshold": 0.55,
+            "sensitivity": 0.9855,
+            "false_alarms_per_hour": 1.492
+          },
+          {
+            "threshold": 0.575,
+            "sensitivity": 0.9855,
+            "false_alarms_per_hour": 1.313
+          },
+          {
+            "threshold": 0.6,
+            "sensitivity": 0.9855,
+            "false_alarms_per_hour": 1.193
+          },
+          {
+            "threshold": 0.625,
+            "sensitivity": 0.9845,
+            "false_alarms_per_hour": 1.134
+          },
+          {
+            "threshold": 0.65,
+            "sensitivity": 0.984,
+            "false_alarms_per_hour": 1.134
+          },
+          {
+            "threshold": 0.675,
+            "sensitivity": 0.9835,
+            "false_alarms_per_hour": 1.014
+          },
+          {
+            "threshold": 0.7,
+            "sensitivity": 0.9835,
+            "false_alarms_per_hour": 1.014
+          },
+          {
+            "threshold": 0.725,
+            "sensitivity": 0.9831,
+            "false_alarms_per_hour": 0.955
+          },
+          {
+            "threshold": 0.75,
+            "sensitivity": 0.9826,
+            "false_alarms_per_hour": 0.895
+          },
+          {
+            "threshold": 0.775,
+            "sensitivity": 0.9801,
+            "false_alarms_per_hour": 0.835
+          },
+          {
+            "threshold": 0.8,
+            "sensitivity": 0.9801,
+            "false_alarms_per_hour": 0.776
+          },
+          {
+            "threshold": 0.825,
+            "sensitivity": 0.9776,
+            "false_alarms_per_hour": 0.776
+          },
+          {
+            "threshold": 0.85,
+            "sensitivity": 0.9771,
+            "false_alarms_per_hour": 0.716
+          },
+          {
+            "threshold": 0.875,
+            "sensitivity": 0.9761,
+            "false_alarms_per_hour": 0.716
+          },
+          {
+            "threshold": 0.9,
+            "sensitivity": 0.9736,
+            "false_alarms_per_hour": 0.597
+          },
+          {
+            "threshold": 0.925,
+            "sensitivity": 0.9726,
+            "false_alarms_per_hour": 0.537
+          },
+          {
+            "threshold": 0.95,
+            "sensitivity": 0.9686,
+            "false_alarms_per_hour": 0.477
+          },
+          {
+            "threshold": 0.975,
+            "sensitivity": 0.9656,
+            "false_alarms_per_hour": 0.358
+          }
+        ]
+      },
+      "ensemble": {
+        "sensitivity": 0.9487,
+        "specificity": 1.0,
+        "false_alarms_per_hour": 0.0,
+        "tp": 1903.0,
+        "fn": 103.0,
+        "tn": 3245.0,
+        "fp_trials": 0.0,
+        "false_alarms": 0.0,
+        "adl_hours": 16.758,
+        "fold_std": {
+          "sensitivity": 0.029,
+          "specificity": 0.0,
+          "false_alarms_per_hour": 0.0
+        },
+        "thresholds_per_fold": [
+          0.97,
+          0.92,
+          0.93,
+          0.93,
+          0.95
+        ],
+        "subgroups": {
+          "umafall": {
+            "sensitivity": 0.9087,
+            "specificity": 1.0,
+            "false_alarms_per_hour": 0.0,
+            "tp": 189.0,
+            "fn": 19.0,
+            "tn": 538.0,
+            "fp_trials": 0.0,
+            "false_alarms": 0.0,
+            "adl_hours": 2.223
+          },
+          "elderly_60plus": {
+            "sensitivity": 0.7333,
+            "specificity": 1.0,
+            "false_alarms_per_hour": 0.0,
+            "tp": 55.0,
+            "fn": 20.0,
+            "tn": 935.0,
+            "fp_trials": 0.0,
+            "false_alarms": 0.0,
+            "adl_hours": 5.193
+          },
+          "sisfall": {
+            "sensitivity": 0.9533,
+            "specificity": 1.0,
+            "false_alarms_per_hour": 0.0,
+            "tp": 1714.0,
+            "fn": 84.0,
+            "tn": 2707.0,
+            "fp_trials": 0.0,
+            "false_alarms": 0.0,
+            "adl_hours": 14.536
+          }
+        },
+        "false_alarms_by_activity": {
+          "Aplausing": 0,
+          "HandsUp": 0,
+          "MakingACall": 0,
+          "OpeningDoor": 0,
+          "Sitting_GettingUpOnAChair": 0,
+          "Walking": 0,
+          "Bending": 0,
+          "Hopping": 0,
+          "Jogging": 0,
+          "LyingDown_OnABed": 0,
+          "GoDownstairs": 0,
+          "GoUpstairs": 0,
+          "D01": 0,
+          "D02": 0,
+          "D03": 0,
+          "D04": 0,
+          "D05": 0,
+          "D06": 0,
+          "D07": 0,
+          "D08": 0,
+          "D09": 0,
+          "D10": 0,
+          "D11": 0,
+          "D12": 0,
+          "D13": 0,
+          "D14": 0,
+          "D15": 0,
+          "D16": 0,
+          "D17": 0,
+          "D18": 0,
+          "D19": 0
+        },
+        "curve": [
+          {
+            "threshold": 0.05,
+            "sensitivity": 0.989,
+            "false_alarms_per_hour": 5.43
+          },
+          {
+            "threshold": 0.075,
+            "sensitivity": 0.989,
+            "false_alarms_per_hour": 4.774
+          },
+          {
+            "threshold": 0.1,
+            "sensitivity": 0.989,
+            "false_alarms_per_hour": 4.416
+          },
+          {
+            "threshold": 0.125,
+            "sensitivity": 0.989,
+            "false_alarms_per_hour": 4.177
+          },
+          {
+            "threshold": 0.15,
+            "sensitivity": 0.9895,
+            "false_alarms_per_hour": 4.117
+          },
+          {
+            "threshold": 0.175,
+            "sensitivity": 0.989,
+            "false_alarms_per_hour": 3.759
+          },
+          {
+            "threshold": 0.2,
+            "sensitivity": 0.989,
+            "false_alarms_per_hour": 3.461
+          },
+          {
+            "threshold": 0.225,
+            "sensitivity": 0.989,
+            "false_alarms_per_hour": 3.103
+          },
+          {
+            "threshold": 0.25,
+            "sensitivity": 0.989,
+            "false_alarms_per_hour": 2.864
+          },
+          {
+            "threshold": 0.275,
+            "sensitivity": 0.989,
+            "false_alarms_per_hour": 2.804
+          },
+          {
+            "threshold": 0.3,
+            "sensitivity": 0.989,
+            "false_alarms_per_hour": 2.685
+          },
+          {
+            "threshold": 0.325,
+            "sensitivity": 0.989,
+            "false_alarms_per_hour": 2.625
+          },
+          {
+            "threshold": 0.35,
+            "sensitivity": 0.989,
+            "false_alarms_per_hour": 2.446
+          },
+          {
+            "threshold": 0.375,
+            "sensitivity": 0.989,
+            "false_alarms_per_hour": 2.208
+          },
+          {
+            "threshold": 0.4,
+            "sensitivity": 0.9885,
+            "false_alarms_per_hour": 2.088
+          },
+          {
+            "threshold": 0.425,
+            "sensitivity": 0.9885,
+            "false_alarms_per_hour": 1.909
+          },
+          {
+            "threshold": 0.45,
+            "sensitivity": 0.988,
+            "false_alarms_per_hour": 1.909
+          },
+          {
+            "threshold": 0.475,
+            "sensitivity": 0.9865,
+            "false_alarms_per_hour": 1.79
+          },
+          {
+            "threshold": 0.5,
+            "sensitivity": 0.9855,
+            "false_alarms_per_hour": 1.432
+          },
+          {
+            "threshold": 0.525,
+            "sensitivity": 0.9835,
+            "false_alarms_per_hour": 1.253
+          },
+          {
+            "threshold": 0.55,
+            "sensitivity": 0.9826,
+            "false_alarms_per_hour": 1.074
+          },
+          {
+            "threshold": 0.575,
+            "sensitivity": 0.9821,
+            "false_alarms_per_hour": 0.955
+          },
+          {
+            "threshold": 0.6,
+            "sensitivity": 0.9816,
+            "false_alarms_per_hour": 0.835
+          },
+          {
+            "threshold": 0.625,
+            "sensitivity": 0.9806,
+            "false_alarms_per_hour": 0.716
+          },
+          {
+            "threshold": 0.65,
+            "sensitivity": 0.9791,
+            "false_alarms_per_hour": 0.656
+          },
+          {
+            "threshold": 0.675,
+            "sensitivity": 0.9781,
+            "false_alarms_per_hour": 0.656
+          },
+          {
+            "threshold": 0.7,
+            "sensitivity": 0.9776,
+            "false_alarms_per_hour": 0.597
+          },
+          {
+            "threshold": 0.725,
+            "sensitivity": 0.9766,
+            "false_alarms_per_hour": 0.477
+          },
+          {
+            "threshold": 0.75,
+            "sensitivity": 0.9756,
+            "false_alarms_per_hour": 0.477
+          },
+          {
+            "threshold": 0.775,
+            "sensitivity": 0.9751,
+            "false_alarms_per_hour": 0.418
+          },
+          {
+            "threshold": 0.8,
+            "sensitivity": 0.9731,
+            "false_alarms_per_hour": 0.358
+          },
+          {
+            "threshold": 0.825,
+            "sensitivity": 0.9706,
+            "false_alarms_per_hour": 0.239
+          },
+          {
+            "threshold": 0.85,
+            "sensitivity": 0.9681,
+            "false_alarms_per_hour": 0.239
+          },
+          {
+            "threshold": 0.875,
+            "sensitivity": 0.9636,
+            "false_alarms_per_hour": 0.119
+          },
+          {
+            "threshold": 0.9,
+            "sensitivity": 0.9611,
+            "false_alarms_per_hour": 0.119
+          },
+          {
+            "threshold": 0.925,
+            "sensitivity": 0.9581,
+            "false_alarms_per_hour": 0.06
+          },
+          {
+            "threshold": 0.95,
+            "sensitivity": 0.9511,
+            "false_alarms_per_hour": 0.0
+          },
+          {
+            "threshold": 0.975,
+            "sensitivity": 0.9367,
+            "false_alarms_per_hour": 0.0
+          }
+        ]
+      }
+    }
+  },
+  "wrist": {
+    "position": "wrist",
+    "n_recordings": 746,
+    "n_subjects": 19,
+    "folds": 5,
+    "inner_folds": 4,
+    "target_sensitivity": 0.95,
+    "trigger_g_per_fold": [
+      2.4,
+      2.4,
+      2.75,
+      2.45,
+      2.45
+    ],
+    "models": {
+      "threshold_only": {
+        "sensitivity": 0.9567,
+        "specificity": 0.684,
+        "false_alarms_per_hour": 101.488,
+        "tp": 199.0,
+        "fn": 9.0,
+        "tn": 368.0,
+        "fp_trials": 170.0,
+        "false_alarms": 225.0,
+        "adl_hours": 2.217,
+        "fold_std": {
+          "sensitivity": 0.0338,
+          "specificity": 0.0505,
+          "false_alarms_per_hour": 22.1513
+        },
+        "thresholds_per_fold": [
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "subgroups": {
+          "umafall": {
+            "sensitivity": 0.9567,
+            "specificity": 0.684,
+            "false_alarms_per_hour": 101.523,
+            "tp": 199.0,
+            "fn": 9.0,
+            "tn": 368.0,
+            "fp_trials": 170.0,
+            "false_alarms": 225.0,
+            "adl_hours": 2.216
+          },
+          "elderly_60plus": {
+            "sensitivity": 0.0,
+            "specificity": 0.7568,
+            "false_alarms_per_hour": 59.124,
+            "tp": 0.0,
+            "fn": 0.0,
+            "tn": 28.0,
+            "fp_trials": 9.0,
+            "false_alarms": 9.0,
+            "adl_hours": 0.152
+          }
+        },
+        "false_alarms_by_activity": {
+          "Hopping": 84,
+          "Jogging": 50,
+          "Aplausing": 43,
+          "LyingDown_OnABed": 18,
+          "HandsUp": 11,
+          "Walking": 6,
+          "GoDownstairs": 5,
+          "Sitting_GettingUpOnAChair": 4,
+          "OpeningDoor": 3,
+          "GoUpstairs": 1,
+          "Bending": 0,
+          "MakingACall": 0
+        },
+        "curve": null
+      },
+      "lightgbm": {
+        "sensitivity": 0.9375,
+        "specificity": 0.9052,
+        "false_alarms_per_hour": 23.004,
+        "tp": 195.0,
+        "fn": 13.0,
+        "tn": 487.0,
+        "fp_trials": 51.0,
+        "false_alarms": 51.0,
+        "adl_hours": 2.217,
+        "fold_std": {
+          "sensitivity": 0.0486,
+          "specificity": 0.0265,
+          "false_alarms_per_hour": 6.4406
+        },
+        "thresholds_per_fold": [
+          0.14,
+          0.06,
+          0.3,
+          0.06,
+          0.13
+        ],
+        "subgroups": {
+          "umafall": {
+            "sensitivity": 0.9375,
+            "specificity": 0.9052,
+            "false_alarms_per_hour": 23.012,
+            "tp": 195.0,
+            "fn": 13.0,
+            "tn": 487.0,
+            "fp_trials": 51.0,
+            "false_alarms": 51.0,
+            "adl_hours": 2.216
+          },
+          "elderly_60plus": {
+            "sensitivity": 0.0,
+            "specificity": 0.8108,
+            "false_alarms_per_hour": 45.985,
+            "tp": 0.0,
+            "fn": 0.0,
+            "tn": 30.0,
+            "fp_trials": 7.0,
+            "false_alarms": 7.0,
+            "adl_hours": 0.152
+          }
+        },
+        "false_alarms_by_activity": {
+          "Aplausing": 27,
+          "LyingDown_OnABed": 8,
+          "HandsUp": 7,
+          "Jogging": 2,
+          "Sitting_GettingUpOnAChair": 2,
+          "Walking": 2,
+          "OpeningDoor": 2,
+          "Hopping": 1,
+          "Bending": 0,
+          "MakingACall": 0,
+          "GoDownstairs": 0,
+          "GoUpstairs": 0
+        },
+        "curve": [
+          {
+            "threshold": 0.05,
+            "sensitivity": 0.9663,
+            "false_alarms_per_hour": 31.134
+          },
+          {
+            "threshold": 0.075,
+            "sensitivity": 0.9519,
+            "false_alarms_per_hour": 26.622
+          },
+          {
+            "threshold": 0.1,
+            "sensitivity": 0.9519,
+            "false_alarms_per_hour": 24.817
+          },
+          {
+            "threshold": 0.125,
+            "sensitivity": 0.9471,
+            "false_alarms_per_hour": 21.658
+          },
+          {
+            "threshold": 0.15,
+            "sensitivity": 0.9423,
+            "false_alarms_per_hour": 19.853
+          },
+          {
+            "threshold": 0.175,
+            "sensitivity": 0.9423,
+            "false_alarms_per_hour": 18.951
+          },
+          {
+            "threshold": 0.2,
+            "sensitivity": 0.9423,
+            "false_alarms_per_hour": 17.146
+          },
+          {
+            "threshold": 0.225,
+            "sensitivity": 0.9375,
+            "false_alarms_per_hour": 16.244
+          },
+          {
+            "threshold": 0.25,
+            "sensitivity": 0.9375,
+            "false_alarms_per_hour": 15.341
+          },
+          {
+            "threshold": 0.275,
+            "sensitivity": 0.9375,
+            "false_alarms_per_hour": 14.89
+          },
+          {
+            "threshold": 0.3,
+            "sensitivity": 0.9327,
+            "false_alarms_per_hour": 14.89
+          },
+          {
+            "threshold": 0.325,
+            "sensitivity": 0.9279,
+            "false_alarms_per_hour": 13.988
+          },
+          {
+            "threshold": 0.35,
+            "sensitivity": 0.9279,
+            "false_alarms_per_hour": 12.634
+          },
+          {
+            "threshold": 0.375,
+            "sensitivity": 0.9279,
+            "false_alarms_per_hour": 12.183
+          },
+          {
+            "threshold": 0.4,
+            "sensitivity": 0.9183,
+            "false_alarms_per_hour": 11.28
+          },
+          {
+            "threshold": 0.425,
+            "sensitivity": 0.9183,
+            "false_alarms_per_hour": 11.28
+          },
+          {
+            "threshold": 0.45,
+            "sensitivity": 0.9135,
+            "false_alarms_per_hour": 11.28
+          },
+          {
+            "threshold": 0.475,
+            "sensitivity": 0.9087,
+            "false_alarms_per_hour": 10.829
+          },
+          {
+            "threshold": 0.5,
+            "sensitivity": 0.9038,
+            "false_alarms_per_hour": 10.378
+          },
+          {
+            "threshold": 0.525,
+            "sensitivity": 0.9038,
+            "false_alarms_per_hour": 9.927
+          },
+          {
+            "threshold": 0.55,
+            "sensitivity": 0.8942,
+            "false_alarms_per_hour": 9.475
+          },
+          {
+            "threshold": 0.575,
+            "sensitivity": 0.8942,
+            "false_alarms_per_hour": 9.024
+          },
+          {
+            "threshold": 0.6,
+            "sensitivity": 0.8894,
+            "false_alarms_per_hour": 8.122
+          },
+          {
+            "threshold": 0.625,
+            "sensitivity": 0.8846,
+            "false_alarms_per_hour": 8.122
+          },
+          {
+            "threshold": 0.65,
+            "sensitivity": 0.8846,
+            "false_alarms_per_hour": 6.768
+          },
+          {
+            "threshold": 0.675,
+            "sensitivity": 0.875,
+            "false_alarms_per_hour": 6.317
+          },
+          {
+            "threshold": 0.7,
+            "sensitivity": 0.8702,
+            "false_alarms_per_hour": 6.317
+          },
+          {
+            "threshold": 0.725,
+            "sensitivity": 0.8606,
+            "false_alarms_per_hour": 5.866
+          },
+          {
+            "threshold": 0.75,
+            "sensitivity": 0.8558,
+            "false_alarms_per_hour": 5.415
+          },
+          {
+            "threshold": 0.775,
+            "sensitivity": 0.8462,
+            "false_alarms_per_hour": 5.415
+          },
+          {
+            "threshold": 0.8,
+            "sensitivity": 0.8125,
+            "false_alarms_per_hour": 5.415
+          },
+          {
+            "threshold": 0.825,
+            "sensitivity": 0.8125,
+            "false_alarms_per_hour": 5.415
+          },
+          {
+            "threshold": 0.85,
+            "sensitivity": 0.7788,
+            "false_alarms_per_hour": 4.061
+          },
+          {
+            "threshold": 0.875,
+            "sensitivity": 0.7596,
+            "false_alarms_per_hour": 4.061
+          },
+          {
+            "threshold": 0.9,
+            "sensitivity": 0.7548,
+            "false_alarms_per_hour": 3.61
+          },
+          {
+            "threshold": 0.925,
+            "sensitivity": 0.726,
+            "false_alarms_per_hour": 3.61
+          },
+          {
+            "threshold": 0.95,
+            "sensitivity": 0.6635,
+            "false_alarms_per_hour": 3.61
+          },
+          {
+            "threshold": 0.975,
+            "sensitivity": 0.5577,
+            "false_alarms_per_hour": 2.256
+          }
+        ]
+      },
+      "cnn": {
+        "sensitivity": 0.9183,
+        "specificity": 0.9312,
+        "false_alarms_per_hour": 16.689,
+        "tp": 191.0,
+        "fn": 17.0,
+        "tn": 501.0,
+        "fp_trials": 37.0,
+        "false_alarms": 37.0,
+        "adl_hours": 2.217,
+        "fold_std": {
+          "sensitivity": 0.0677,
+          "specificity": 0.0539,
+          "false_alarms_per_hour": 13.0515
+        },
+        "thresholds_per_fold": [
+          0.42,
+          0.33,
+          0.66,
+          0.36,
+          0.45
+        ],
+        "subgroups": {
+          "umafall": {
+            "sensitivity": 0.9183,
+            "specificity": 0.9312,
+            "false_alarms_per_hour": 16.695,
+            "tp": 191.0,
+            "fn": 17.0,
+            "tn": 501.0,
+            "fp_trials": 37.0,
+            "false_alarms": 37.0,
+            "adl_hours": 2.216
+          },
+          "elderly_60plus": {
+            "sensitivity": 0.0,
+            "specificity": 0.8919,
+            "false_alarms_per_hour": 26.277,
+            "tp": 0.0,
+            "fn": 0.0,
+            "tn": 33.0,
+            "fp_trials": 4.0,
+            "false_alarms": 4.0,
+            "adl_hours": 0.152
+          }
+        },
+        "false_alarms_by_activity": {
+          "LyingDown_OnABed": 13,
+          "Aplausing": 10,
+          "HandsUp": 8,
+          "Hopping": 3,
+          "Sitting_GettingUpOnAChair": 1,
+          "Walking": 1,
+          "OpeningDoor": 1,
+          "Bending": 0,
+          "Jogging": 0,
+          "MakingACall": 0,
+          "GoDownstairs": 0,
+          "GoUpstairs": 0
+        },
+        "curve": [
+          {
+            "threshold": 0.05,
+            "sensitivity": 0.9567,
+            "false_alarms_per_hour": 49.182
+          },
+          {
+            "threshold": 0.075,
+            "sensitivity": 0.9567,
+            "false_alarms_per_hour": 44.219
+          },
+          {
+            "threshold": 0.1,
+            "sensitivity": 0.9567,
+            "false_alarms_per_hour": 40.609
+          },
+          {
+            "threshold": 0.125,
+            "sensitivity": 0.9567,
+            "false_alarms_per_hour": 36.548
+          },
+          {
+            "threshold": 0.15,
+            "sensitivity": 0.9519,
+            "false_alarms_per_hour": 32.939
+          },
+          {
+            "threshold": 0.175,
+            "sensitivity": 0.9471,
+            "false_alarms_per_hour": 30.682
+          },
+          {
+            "threshold": 0.2,
+            "sensitivity": 0.9471,
+            "false_alarms_per_hour": 28.426
+          },
+          {
+            "threshold": 0.225,
+            "sensitivity": 0.9471,
+            "false_alarms_per_hour": 25.719
+          },
+          {
+            "threshold": 0.25,
+            "sensitivity": 0.9471,
+            "false_alarms_per_hour": 25.268
+          },
+          {
+            "threshold": 0.275,
+            "sensitivity": 0.9423,
+            "false_alarms_per_hour": 24.817
+          },
+          {
+            "threshold": 0.3,
+            "sensitivity": 0.9375,
+            "false_alarms_per_hour": 23.463
+          },
+          {
+            "threshold": 0.325,
+            "sensitivity": 0.9423,
+            "false_alarms_per_hour": 22.109
+          },
+          {
+            "threshold": 0.35,
+            "sensitivity": 0.9327,
+            "false_alarms_per_hour": 21.207
+          },
+          {
+            "threshold": 0.375,
+            "sensitivity": 0.9375,
+            "false_alarms_per_hour": 20.756
+          },
+          {
+            "threshold": 0.4,
+            "sensitivity": 0.9327,
+            "false_alarms_per_hour": 20.305
+          },
+          {
+            "threshold": 0.425,
+            "sensitivity": 0.9327,
+            "false_alarms_per_hour": 18.5
+          },
+          {
+            "threshold": 0.45,
+            "sensitivity": 0.9327,
+            "false_alarms_per_hour": 17.597
+          },
+          {
+            "threshold": 0.475,
+            "sensitivity": 0.9327,
+            "false_alarms_per_hour": 17.146
+          },
+          {
+            "threshold": 0.5,
+            "sensitivity": 0.9327,
+            "false_alarms_per_hour": 15.341
+          },
+          {
+            "threshold": 0.525,
+            "sensitivity": 0.9279,
+            "false_alarms_per_hour": 13.988
+          },
+          {
+            "threshold": 0.55,
+            "sensitivity": 0.9183,
+            "false_alarms_per_hour": 12.634
+          },
+          {
+            "threshold": 0.575,
+            "sensitivity": 0.9135,
+            "false_alarms_per_hour": 10.829
+          },
+          {
+            "threshold": 0.6,
+            "sensitivity": 0.9135,
+            "false_alarms_per_hour": 9.927
+          },
+          {
+            "threshold": 0.625,
+            "sensitivity": 0.9135,
+            "false_alarms_per_hour": 8.122
+          },
+          {
+            "threshold": 0.65,
+            "sensitivity": 0.9087,
+            "false_alarms_per_hour": 7.671
+          },
+          {
+            "threshold": 0.675,
+            "sensitivity": 0.8942,
+            "false_alarms_per_hour": 6.768
+          },
+          {
+            "threshold": 0.7,
+            "sensitivity": 0.8846,
+            "false_alarms_per_hour": 5.866
+          },
+          {
+            "threshold": 0.725,
+            "sensitivity": 0.8606,
+            "false_alarms_per_hour": 4.963
+          },
+          {
+            "threshold": 0.75,
+            "sensitivity": 0.8558,
+            "false_alarms_per_hour": 4.512
+          },
+          {
+            "threshold": 0.775,
+            "sensitivity": 0.8317,
+            "false_alarms_per_hour": 4.061
+          },
+          {
+            "threshold": 0.8,
+            "sensitivity": 0.8125,
+            "false_alarms_per_hour": 3.61
+          },
+          {
+            "threshold": 0.825,
+            "sensitivity": 0.7933,
+            "false_alarms_per_hour": 3.61
+          },
+          {
+            "threshold": 0.85,
+            "sensitivity": 0.7692,
+            "false_alarms_per_hour": 3.158
+          },
+          {
+            "threshold": 0.875,
+            "sensitivity": 0.7067,
+            "false_alarms_per_hour": 2.256
+          },
+          {
+            "threshold": 0.9,
+            "sensitivity": 0.6779,
+            "false_alarms_per_hour": 2.256
+          },
+          {
+            "threshold": 0.925,
+            "sensitivity": 0.5962,
+            "false_alarms_per_hour": 1.354
+          },
+          {
+            "threshold": 0.95,
+            "sensitivity": 0.5048,
+            "false_alarms_per_hour": 1.354
+          },
+          {
+            "threshold": 0.975,
+            "sensitivity": 0.3606,
+            "false_alarms_per_hour": 0.902
+          }
+        ]
+      },
+      "ensemble": {
+        "sensitivity": 0.9423,
+        "specificity": 0.9535,
+        "false_alarms_per_hour": 11.276,
+        "tp": 196.0,
+        "fn": 12.0,
+        "tn": 513.0,
+        "fp_trials": 25.0,
+        "false_alarms": 25.0,
+        "adl_hours": 2.217,
+        "fold_std": {
+          "sensitivity": 0.0469,
+          "specificity": 0.0327,
+          "false_alarms_per_hour": 7.944
+        },
+        "thresholds_per_fold": [
+          0.45,
+          0.34,
+          0.53,
+          0.33,
+          0.41
+        ],
+        "subgroups": {
+          "umafall": {
+            "sensitivity": 0.9423,
+            "specificity": 0.9535,
+            "false_alarms_per_hour": 11.28,
+            "tp": 196.0,
+            "fn": 12.0,
+            "tn": 513.0,
+            "fp_trials": 25.0,
+            "false_alarms": 25.0,
+            "adl_hours": 2.216
+          },
+          "elderly_60plus": {
+            "sensitivity": 0.0,
+            "specificity": 0.8378,
+            "false_alarms_per_hour": 39.416,
+            "tp": 0.0,
+            "fn": 0.0,
+            "tn": 31.0,
+            "fp_trials": 6.0,
+            "false_alarms": 6.0,
+            "adl_hours": 0.152
+          }
+        },
+        "false_alarms_by_activity": {
+          "Aplausing": 10,
+          "LyingDown_OnABed": 6,
+          "HandsUp": 6,
+          "Sitting_GettingUpOnAChair": 1,
+          "Walking": 1,
+          "OpeningDoor": 1,
+          "Bending": 0,
+          "Hopping": 0,
+          "Jogging": 0,
+          "MakingACall": 0,
+          "GoDownstairs": 0,
+          "GoUpstairs": 0
+        },
+        "curve": [
+          {
+            "threshold": 0.05,
+            "sensitivity": 0.9567,
+            "false_alarms_per_hour": 50.085
+          },
+          {
+            "threshold": 0.075,
+            "sensitivity": 0.9567,
+            "false_alarms_per_hour": 42.414
+          },
+          {
+            "threshold": 0.1,
+            "sensitivity": 0.9567,
+            "false_alarms_per_hour": 38.804
+          },
+          {
+            "threshold": 0.125,
+            "sensitivity": 0.9567,
+            "false_alarms_per_hour": 34.292
+          },
+          {
+            "threshold": 0.15,
+            "sensitivity": 0.9519,
+            "false_alarms_per_hour": 30.682
+          },
+          {
+            "threshold": 0.175,
+            "sensitivity": 0.9519,
+            "false_alarms_per_hour": 28.878
+          },
+          {
+            "threshold": 0.2,
+            "sensitivity": 0.9567,
+            "false_alarms_per_hour": 27.073
+          },
+          {
+            "threshold": 0.225,
+            "sensitivity": 0.9567,
+            "false_alarms_per_hour": 25.719
+          },
+          {
+            "threshold": 0.25,
+            "sensitivity": 0.9567,
+            "false_alarms_per_hour": 23.914
+          },
+          {
+            "threshold": 0.275,
+            "sensitivity": 0.9567,
+            "false_alarms_per_hour": 21.207
+          },
+          {
+            "threshold": 0.3,
+            "sensitivity": 0.9567,
+            "false_alarms_per_hour": 20.305
+          },
+          {
+            "threshold": 0.325,
+            "sensitivity": 0.9567,
+            "false_alarms_per_hour": 18.951
+          },
+          {
+            "threshold": 0.35,
+            "sensitivity": 0.9567,
+            "false_alarms_per_hour": 17.146
+          },
+          {
+            "threshold": 0.375,
+            "sensitivity": 0.9567,
+            "false_alarms_per_hour": 13.988
+          },
+          {
+            "threshold": 0.4,
+            "sensitivity": 0.9567,
+            "false_alarms_per_hour": 13.085
+          },
+          {
+            "threshold": 0.425,
+            "sensitivity": 0.9471,
+            "false_alarms_per_hour": 11.28
+          },
+          {
+            "threshold": 0.45,
+            "sensitivity": 0.9423,
+            "false_alarms_per_hour": 11.28
+          },
+          {
+            "threshold": 0.475,
+            "sensitivity": 0.9423,
+            "false_alarms_per_hour": 10.378
+          },
+          {
+            "threshold": 0.5,
+            "sensitivity": 0.9375,
+            "false_alarms_per_hour": 8.573
+          },
+          {
+            "threshold": 0.525,
+            "sensitivity": 0.9375,
+            "false_alarms_per_hour": 6.768
+          },
+          {
+            "threshold": 0.55,
+            "sensitivity": 0.9231,
+            "false_alarms_per_hour": 5.866
+          },
+          {
+            "threshold": 0.575,
+            "sensitivity": 0.9231,
+            "false_alarms_per_hour": 5.415
+          },
+          {
+            "threshold": 0.6,
+            "sensitivity": 0.9231,
+            "false_alarms_per_hour": 4.061
+          },
+          {
+            "threshold": 0.625,
+            "sensitivity": 0.9135,
+            "false_alarms_per_hour": 3.61
+          },
+          {
+            "threshold": 0.65,
+            "sensitivity": 0.899,
+            "false_alarms_per_hour": 2.707
+          },
+          {
+            "threshold": 0.675,
+            "sensitivity": 0.8894,
+            "false_alarms_per_hour": 2.707
+          },
+          {
+            "threshold": 0.7,
+            "sensitivity": 0.8654,
+            "false_alarms_per_hour": 2.256
+          },
+          {
+            "threshold": 0.725,
+            "sensitivity": 0.851,
+            "false_alarms_per_hour": 1.805
+          },
+          {
+            "threshold": 0.75,
+            "sensitivity": 0.8269,
+            "false_alarms_per_hour": 1.805
+          },
+          {
+            "threshold": 0.775,
+            "sensitivity": 0.8221,
+            "false_alarms_per_hour": 1.805
+          },
+          {
+            "threshold": 0.8,
+            "sensitivity": 0.7981,
+            "false_alarms_per_hour": 1.354
+          },
+          {
+            "threshold": 0.825,
+            "sensitivity": 0.7644,
+            "false_alarms_per_hour": 1.354
+          },
+          {
+            "threshold": 0.85,
+            "sensitivity": 0.75,
+            "false_alarms_per_hour": 1.354
+          },
+          {
+            "threshold": 0.875,
+            "sensitivity": 0.7212,
+            "false_alarms_per_hour": 0.902
+          },
+          {
+            "threshold": 0.9,
+            "sensitivity": 0.6731,
+            "false_alarms_per_hour": 0.451
+          },
+          {
+            "threshold": 0.925,
+            "sensitivity": 0.6106,
+            "false_alarms_per_hour": 0.451
+          },
+          {
+            "threshold": 0.95,
+            "sensitivity": 0.5,
+            "false_alarms_per_hour": 0.0
+          },
+          {
+            "threshold": 0.975,
+            "sensitivity": 0.351,
+            "false_alarms_per_hour": 0.0
+          }
+        ]
+      }
+    }
+  }
+}

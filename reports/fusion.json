@@ -1,0 +1,61 @@
+{
+  "thresholds": {
+    "phone": 0.93,
+    "wrist": 0.41
+  },
+  "phone_only": {
+    "sensitivity": 0.9712,
+    "specificity": 0.9963,
+    "false_alarms_per_hour": 0.902,
+    "tp": 202,
+    "fn": 6,
+    "tn": 536,
+    "fp_trials": 2,
+    "false_alarms": 2,
+    "adl_hours": 2.216
+  },
+  "wrist_only": {
+    "sensitivity": 0.9567,
+    "specificity": 0.9331,
+    "false_alarms_per_hour": 16.244,
+    "tp": 199,
+    "fn": 9,
+    "tn": 502,
+    "fp_trials": 36,
+    "false_alarms": 36,
+    "adl_hours": 2.216
+  },
+  "fused_or": {
+    "sensitivity": 0.9952,
+    "specificity": 0.9312,
+    "false_alarms_per_hour": 16.695,
+    "tp": 207,
+    "fn": 1,
+    "tn": 501,
+    "fp_trials": 37,
+    "false_alarms": 37,
+    "adl_hours": 2.216
+  },
+  "fused_and": {
+    "sensitivity": 0.9279,
+    "specificity": 1.0,
+    "false_alarms_per_hour": 0.0,
+    "tp": 193,
+    "fn": 15,
+    "tn": 538,
+    "fp_trials": 0,
+    "false_alarms": 0,
+    "adl_hours": 2.216
+  },
+  "fused_mean": {
+    "sensitivity": 0.9567,
+    "specificity": 0.9981,
+    "false_alarms_per_hour": 0.451,
+    "tp": 199,
+    "fn": 9,
+    "tn": 537,
+    "fp_trials": 1,
+    "false_alarms": 1,
+    "adl_hours": 2.216
+  }
+}
