@@ -4,7 +4,17 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 
 export default [
-  { ignores: ['dist'] },
+  { ignores: ['dist', 'smoke-output'] },
+  {
+    // Node-side code: build config, test + smoke scripts
+    files: ['vite.config.js', 'scripts/**/*.mjs', 'src/**/*.test.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: globals.node,
+    },
+    rules: js.configs.recommended.rules,
+  },
   {
     files: ['**/*.{js,jsx}'],
     languageOptions: {
