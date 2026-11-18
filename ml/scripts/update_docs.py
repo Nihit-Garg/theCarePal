@@ -1,5 +1,6 @@
-"""Regenerate every reported number in the docs from reports/*.json and the exported
-model config, so the README, walkthrough and model card can never drift from the results.
+"""Regenerate the results numbers in the docs from reports/*.json and the exported
+model config. Only the marked blocks below are generated (and checked by CI); numbers
+written elsewhere in prose are kept approximate on purpose ("about 13 false alarms an hour").
 
     python ml/scripts/update_docs.py
 

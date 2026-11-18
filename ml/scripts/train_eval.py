@@ -120,14 +120,14 @@ def run_position(pos: str, recs, k: int, k_inner: int) -> dict:
         summary["fold_std"] = {key: round(float(np.std([f[key] for f in fm])), 4)
                                for key in ("sensitivity", "specificity", "false_alarms_per_hour")}
         summary["thresholds_per_fold"] = thresholds[name]
-        summary["subgroups"] = subgroup_metrics(res, name)
-        summary["false_alarms_by_activity"] = false_alarms_by_activity(res, name)
+        summary["subgroups"] = subgroup_metrics(res)
+        summary["false_alarms_by_activity"] = false_alarms_by_activity(res)
         summary["curve"] = curve(res) if name != "threshold_only" else None
         out["models"][name] = summary
     return out
 
 
-def false_alarms_by_activity(res: list[RecResult], name: str) -> dict:
+def false_alarms_by_activity(res: list[RecResult]) -> dict:
     c = Counter()
     for rr in res:
         if not rr.rec.label:
@@ -135,7 +135,7 @@ def false_alarms_by_activity(res: list[RecResult], name: str) -> dict:
     return dict(c.most_common())
 
 
-def subgroup_metrics(res: list[RecResult], name: str) -> dict:
+def subgroup_metrics(res: list[RecResult]) -> dict:
     groups = defaultdict(list)
     for rr in res:
         groups[rr.rec.dataset].append(rr)

@@ -8,7 +8,7 @@ UMAFall recorded phone and wrist simultaneously. Subject-wise 5-fold CV over its
 | Wrist only | 95.2% | 92.6% | 18.05 | 198/208 |
 | Either device (OR) | 99.0% | 92.2% | 18.95 | 206/208 |
 | Both devices (AND) | 92.8% | 100.0% | 0.00 | 193/208 |
-| Mean of p/threshold (previous rule) | 96.6% | 99.8% | 0.45 | 201/208 |
+| Mean of p/threshold (first version) | 96.6% | 99.8% | 0.45 | 201/208 |
 | Log-odds margins, clip ±3 (shipped) | 98.6% | 99.8% | 0.45 | 205/208 |
 
 Shipped rule: `logodds`. Its clip constant was fixed at 3 before evaluation; for transparency, the same rule with other clips: 2 → sensitivity 99.0%, 0.45 FA/h, 4 → sensitivity 98.1%, 0.00 FA/h.

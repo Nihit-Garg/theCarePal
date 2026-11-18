@@ -87,7 +87,7 @@ def main() -> None:
     res["clip_sensitivity_check"] = sensitivity
     (config.REPORTS_DIR / "fusion.json").write_text(json.dumps(res, indent=2))
     names = {"phone_only": "Phone only", "wrist_only": "Wrist only", "fused_or": "Either device (OR)",
-             "fused_and": "Both devices (AND)", "fused_mean": "Mean of p/threshold (previous rule)",
+             "fused_and": "Both devices (AND)", "fused_mean": "Mean of p/threshold (first version)",
              "fused_logodds": "Log-odds margins, clip ±3 (shipped)"}
     lines = ["# Fusion of phone + wrist", "",
              "UMAFall recorded phone and wrist simultaneously. Subject-wise 5-fold CV over its 19 people: each "

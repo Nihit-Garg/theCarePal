@@ -6,9 +6,9 @@ the two scores are combined. Rules compared in eval_fusion.py:
 
 * "or"      alarm if either device alone would (max sensitivity, most false alarms)
 * "and"     alarm only if both would (fewest false alarms, misses falls one device saw poorly)
-* "mean"    alarm if mean(p / threshold) >= 1. Lopsided: with thresholds 0.93 (phone)
-            and 0.41 (wrist) the phone can never exceed 1/0.93, so it can never carry
-            a decision on its own. Kept for comparison.
+* "mean"    alarm if mean(p / threshold) >= 1. Lopsided: with a high phone threshold
+            (~0.9) the phone's score can never exceed ~1.1, so it can never carry a
+            decision on its own. Kept for comparison (it was the first version).
 * "logodds" (shipped) each device contributes its evidence margin over its own threshold,
             m = logit(p) - logit(threshold), clipped to +/-LOGODDS_CLIP, and the alarm
             fires if m_phone + m_wrist >= 0. Symmetric: a very confident device can

@@ -35,7 +35,8 @@ def test_detects_a_marked_fall_without_false_alarms(tmp_path):
     phone = np.concatenate([still(fall[0], 60), fall, still(fall[-1], 60)])
     impact_t = (60 * config.FS + int(np.argmax(np.linalg.norm(fall, axis=1)))) / config.FS
     csv = tmp_path / "rec.csv"
-    _write_fallguard_csv(csv, phone, mark_t=impact_t + 3)
+    # as documented: the user dismisses the alert first, then marks the fall ~15 s later
+    _write_fallguard_csv(csv, phone, mark_t=impact_t + 15)
 
     out = subprocess.run([sys.executable, str(SCRIPT), str(csv), "--out", str(tmp_path / "res")],
                          capture_output=True, text=True, check=True)

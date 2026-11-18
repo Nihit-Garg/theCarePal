@@ -52,7 +52,7 @@
       "cnn_params": 6225,
       "onnx_parity": {
         "lightgbm_max_abs_diff": 8.591450750827789e-08,
-        "cnn_max_abs_diff": 4.76837158203125e-07
+        "cnn_max_abs_diff": 1.341104507446289e-07
       },
       "cv_metrics": {
         "sensitivity": 0.9487,

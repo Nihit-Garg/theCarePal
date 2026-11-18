@@ -135,8 +135,9 @@ def golden_vectors(pos, recs, ens: EnsembleModel, trig: float, thr: float) -> di
 
 def fusion_golden(replays: list[dict], models: dict) -> list[dict]:
     """Fused alarms on synchronised replays (one fall, two tricky everyday activities)."""
-    pick = [r for r in replays if r["kind"] == "fall"][:1] + \
-           [r for r in replays if r["activity"] in ("LyingDown_OnABed", "Aplausing")][:2]
+    first = lambda activity: next(r for r in replays if r["activity"] == activity)  # noqa: E731
+    # one fall + the two hardest everyday activities for the wrist
+    pick = [next(r for r in replays if r["kind"] == "fall"), first("LyingDown_OnABed"), first("Aplausing")]
     cases = []
     for r in pick:
         acc = {pos: np.asarray(r[pos], dtype=np.float32) for pos in config.POSITIONS}

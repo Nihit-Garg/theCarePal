@@ -12,7 +12,7 @@ Input formats
 
 Outputs: printed summary, <out>.json, and <out>.png (timeline with |a|, stage-2
 scores, alarms and your fall marks). Reported per device present:
-  * hours recorded, alarms, false alarms (alarms not within -10 s..+5 s of a fall mark),
+  * hours recorded, alarms, false alarms (alarms not within -60 s..+5 s of a fall mark),
     false alarms per hour, and marked falls detected.
   * For FallGuard CSVs: how many alarms the browser raised during recording, as a
     cross-check that Python and browser agree.
@@ -33,7 +33,10 @@ from fallguard.detector import alarms_from_candidates, score_recording
 from fallguard.onnx_model import OnnxEnsemble
 from fallguard.signal import magnitude
 
-MARK_BEFORE_S, MARK_AFTER_S = 10.0, 5.0   # the user taps "I just fell" a few seconds after impact
+# The user marks a test fall AFTER it: the app's alert covers the screen for a few
+# seconds and they first tap "I'm OK", then "I just did a test fall" — so the mark
+# lands ~10-30 s after the impact. An alarm up to 60 s before the mark counts.
+MARK_BEFORE_S, MARK_AFTER_S = 60.0, 5.0
 TIME_SCALE = {"s": 1000.0, "ms": 1.0, "ns": 1e-6}
 
 
@@ -45,8 +48,9 @@ def load_fallguard_csv(path: Path) -> tuple[dict, list[float], int]:
         if len(d) >= config.FS * 5:
             streams[dev] = (d["t"].to_numpy(float), d[["ax", "ay", "az"]].to_numpy(float))
     marks = df.loc[df["event"] == "mark_fall", "t"].astype(float).tolist()
+    labels = df.loc[df["event"] == "mark_activity", ["t", "detail"]].itertuples(index=False)
     app_alarms = int((df["event"] == "alarm").sum())
-    return streams, marks, app_alarms
+    return streams, marks, app_alarms, [(float(t), str(d)) for t, d in labels]
 
 
 def load_generic_csv(path: Path, a) -> tuple[dict, list[float], None]:
@@ -58,7 +62,7 @@ def load_generic_csv(path: Path, a) -> tuple[dict, list[float], None]:
     rest = float(np.median(np.linalg.norm(xyz, axis=1)))
     if not 0.8 < rest < 1.2:
         print(f"WARNING: median |a| = {rest:.2f} g (expected ~1 g). Is gravity included and are --units right?")
-    return {a.device: (t - t[0], xyz)}, [], None
+    return {a.device: (t - t[0], xyz)}, [], None, []
 
 
 def evaluate(streams: dict, marks: list[float]) -> tuple[dict, dict]:
@@ -90,7 +94,7 @@ def evaluate(streams: dict, marks: list[float]) -> tuple[dict, dict]:
     return results, plot
 
 
-def save_plot(plot: dict, marks: list[float], path: Path) -> None:
+def save_plot(plot: dict, marks: list[float], labels: list[tuple[float, str]], path: Path) -> None:
     fig, axes = plt.subplots(len(plot), 1, figsize=(12, 3.2 * len(plot)), squeeze=False, sharex=True)
     for ax, (dev, (tt, mag, ct, cp, at, thr)) in zip(axes[:, 0], plot.items()):
         ax.plot(tt, mag, lw=0.6, color="#2f6fdb" if dev == "phone" else "#0f9d8a", label="|a| (g)")
@@ -103,6 +107,9 @@ def save_plot(plot: dict, marks: list[float], path: Path) -> None:
             ax.axvline(x, color="#d6342c", lw=1.2)
         for m in marks:
             ax.axvline(m, color="black", ls=":", lw=1.2)
+        for lt, text in labels:  # your activity labels, to explain any false alarm
+            ax.annotate(text, (lt, 0.98), xycoords=("data", "axes fraction"), fontsize=7, rotation=90,
+                        va="top", ha="right", color="#555")
         ax.set_title(f"{dev}: red = alarm, dotted = your fall mark, dashed = threshold")
         ax.set_ylabel("|a| (g)")
     axes[-1, 0].set_xlabel("time (s)")
@@ -124,15 +131,16 @@ def main() -> None:
     ap.add_argument("--device", choices=list(config.POSITIONS), default="phone")
     a = ap.parse_args()
 
-    streams, marks, app_alarms = load_generic_csv(a.csv, a) if a.generic else load_fallguard_csv(a.csv)
+    streams, marks, app_alarms, labels = load_generic_csv(a.csv, a) if a.generic else load_fallguard_csv(a.csv)
     if not streams:
         raise SystemExit("No accelerometer stream with at least 5 s of data found in the CSV.")
     results, plot = evaluate(streams, marks)
     out = a.out or a.csv.with_suffix("")
     out.parent.mkdir(parents=True, exist_ok=True)
-    summary = {"file": str(a.csv), "devices": results, "app_alarms_during_recording": app_alarms}
+    summary = {"file": str(a.csv), "devices": results, "app_alarms_during_recording": app_alarms,
+               "activity_labels": [{"t": round(lt, 1), "label": text} for lt, text in labels]}
     out.with_suffix(".json").write_text(json.dumps(summary, indent=2))
-    save_plot(plot, marks, out.with_suffix(".png"))
+    save_plot(plot, marks, labels, out.with_suffix(".png"))
 
     for dev, r in results.items():
         print(f"{dev:6s} {r['hours'] * 60:6.1f} min  alarms={r['alarms']}  false alarms={r['false_alarms']} "
