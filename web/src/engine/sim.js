@@ -14,7 +14,9 @@ function jitter(s, amt = 0.004) {
 function lerp(a, b, f) { return a.map((v, i) => v + (b[i] - v) * f); }
 
 export async function loadReplays(base = import.meta.env.BASE_URL) {
-  const index = await (await fetch(`${base}replays/index.json`)).json();
+  const res = await fetch(`${base}replays/index.json`);
+  if (!res.ok) throw new Error(`Could not load demo replays (${res.status})`);
+  const index = await res.json();
   const clips = await Promise.all(index.map(async (meta) => {
     const r = await (await fetch(`${base}replays/${meta.id}.json`)).json();
     let impact = 0, best = -1;

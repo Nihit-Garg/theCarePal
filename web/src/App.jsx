@@ -211,7 +211,9 @@ export default function App() {
       <main className="boot">
         <h1>FallGuard</h1>
         <p className={boot.state === 'error' ? 'error' : 'muted'}>{boot.msg}</p>
-        {boot.state === 'error' && <p className="muted">Run <code>python ml/scripts/export_models.py</code> first, then reload.</p>}
+        {boot.state === 'error' && (/model config|replays/i.test(boot.msg)
+          ? <p className="muted">Model files are missing: run <code>python ml/scripts/export_models.py</code>, then reload.</p>
+          : <p className="muted">The on-device ML runtime failed to start. Try reloading, or a recent Chrome/Safari.</p>)}
       </main>
     );
   }
