@@ -1,11 +1,11 @@
-"""Shared constants. Every value here is mirrored in web/src/engine/config.js —
-the browser runs exactly the same pipeline, so change both together."""
+"""Shared constants. The browser reads the signal/detector values from
+web/public/models/model_config.json, which export_models.py writes from here —
+re-export after changing anything."""
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 RAW_DIR = ROOT / "data" / "raw"
 PROCESSED_DIR = ROOT / "data" / "processed"
-ARTIFACTS_DIR = ROOT / "ml" / "artifacts"
 REPORTS_DIR = ROOT / "reports"
 WEB_MODELS_DIR = ROOT / "web" / "public" / "models"
 WEB_DATA_DIR = ROOT / "web" / "public" / "replays"

@@ -4,8 +4,8 @@ version = "0.1.0"
 description = "Device-agnostic fall detection for phone and wearable accelerometers"
 requires-python = ">=3.10"
 dependencies = [
-  "numpy", "pandas", "scipy", "scikit-learn", "lightgbm", "torch",
-  "onnx", "onnxruntime", "onnxmltools", "skl2onnx", "matplotlib", "tqdm",
+  "numpy", "pandas", "scikit-learn", "lightgbm", "torch",
+  "onnx", "onnxruntime", "onnxmltools", "matplotlib",
 ]
 
 [build-system]

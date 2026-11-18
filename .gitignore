@@ -16,3 +16,8 @@ web/dist/
 serviceAccount*.json
 .DS_Store
 smoke-output/
+
+# local run logs
+reports/*.log
+reports/.rerun.log
+reports/real_world/

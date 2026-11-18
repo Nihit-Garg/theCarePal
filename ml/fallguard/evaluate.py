@@ -51,21 +51,26 @@ def training_windows(recs: list[Recording], trigger_g: float) -> tuple[np.ndarra
 class RecResult:
     rec: Recording
     cands: Candidates
+    fold_thr: float = 0.5  # the threshold this result was evaluated with (set per outer fold)
 
 
 def event_counts(results: list[RecResult], threshold: float) -> dict:
+    return counts_from_alarms((rr.rec, alarms_from_candidates(rr.cands, threshold)) for rr in results)
+
+
+def counts_from_alarms(pairs) -> dict:
+    """pairs: iterable of (recording, alarm sample indices) — from one device or fused."""
     tp = fn = tn = fp_trials = fa = 0
     adl_s = 0.0
-    for rr in results:
-        alarms = alarms_from_candidates(rr.cands, threshold)
-        if rr.rec.label:
-            imp = main_impact(rr.rec.acc)
+    for rec, alarms in pairs:
+        if rec.label:
+            imp = main_impact(rec.acc)
             if len(alarms) and np.min(np.abs(alarms - imp)) <= MATCH_TOL:
                 tp += 1
             else:
                 fn += 1
         else:
-            adl_s += rr.rec.duration_s
+            adl_s += rec.duration_s
             fa += len(alarms)
             if len(alarms):
                 fp_trials += 1

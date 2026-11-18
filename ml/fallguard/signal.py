@@ -5,8 +5,8 @@ band can be strapped either way round, so we never feed raw x/y/z to a model.
 Instead, per event window, we estimate the gravity direction *before* the
 candidate impact and express motion relative to it.
 
-Mirrored line-for-line in web/src/engine/signal.js (parity checked by
-ml/scripts/export_web_assets.py, which writes golden test vectors).
+Mirrored line-for-line in web/src/engine/signal.js. export_models.py writes golden
+test vectors and web/src/engine/parity.test.js checks the JS reproduces them.
 """
 from __future__ import annotations
 

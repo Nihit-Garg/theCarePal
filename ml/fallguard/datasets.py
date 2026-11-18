@@ -12,6 +12,7 @@ config.FS, plus metadata. Downstream code never sees dataset-specific quirks.
 from __future__ import annotations
 
 import contextlib
+import pickle
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -140,3 +141,21 @@ def load_all() -> dict[str, list[Recording]]:
     """Returns {"phone": [...], "wrist": [...]}."""
     recs = load_umafall() + load_sisfall()
     return {p: [r for r in recs if r.position == p] for p in config.POSITIONS}
+
+
+RECORDINGS_CACHE = config.PROCESSED_DIR / "recordings.pkl"
+
+
+def save_recordings(data: dict[str, list[Recording]], path: Path | None = None) -> Path:
+    path = Path(path or RECORDINGS_CACHE)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(pickle.dumps(data))
+    return path
+
+
+def load_recordings(path: Path | None = None) -> dict[str, list[Recording]]:
+    """The harmonised datasets cached by scripts/prepare_data.py."""
+    path = Path(path or RECORDINGS_CACHE)
+    if not path.exists():
+        raise SystemExit(f"{path} not found: run ml/scripts/download_data.sh and ml/scripts/prepare_data.py first.")
+    return pickle.loads(path.read_bytes())

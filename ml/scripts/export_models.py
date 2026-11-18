@@ -11,12 +11,13 @@ Also writes:
   * web/public/models/model_config.json — pipeline constants + per-position settings
   * web/public/replays/*.json — synchronised phone+wrist recordings of the held-out
     DEMO subjects (the simulator streams these; the models never saw these people)
-  * web/src/engine/golden.json — test vectors for the JS port (npm test)
+  * web/src/engine/golden.json — test vectors for the JS port (npm test): resampling,
+    channels, features, model outputs, single-device stream alarms, and fused alarms
+    on synchronised held-out replays
 """
 from __future__ import annotations
 
 import json
-import pickle
 from collections import Counter
 
 import numpy as np
@@ -26,9 +27,10 @@ from onnxmltools import convert_lightgbm
 from onnxmltools.convert.common.data_types import FloatTensorType
 
 from fallguard import config
-from fallguard.datasets import bin_resample
+from fallguard.datasets import bin_resample, load_recordings
 from fallguard.detector import alarms_from_candidates, score_recording
 from fallguard.evaluate import choose_trigger, training_windows
+from fallguard.fusion import DEFAULT_RULE, LOGODDS_CLIP, MATCH_S, fuse
 from fallguard.models import ClassicModel, CNNModel, EnsembleModel
 from fallguard.signal import FEATURE_NAMES, extract_window, window_channels, window_features
 
@@ -131,6 +133,21 @@ def golden_vectors(pos, recs, ens: EnsembleModel, trig: float, thr: float) -> di
                        "alarms": alarms_from_candidates(c, thr).tolist()}}
 
 
+def fusion_golden(replays: list[dict], models: dict) -> list[dict]:
+    """Fused alarms on synchronised replays (one fall, two tricky everyday activities)."""
+    pick = [r for r in replays if r["kind"] == "fall"][:1] + \
+           [r for r in replays if r["activity"] in ("LyingDown_OnABed", "Aplausing")][:2]
+    cases = []
+    for r in pick:
+        acc = {pos: np.asarray(r[pos], dtype=np.float32) for pos in config.POSITIONS}
+        cands = {pos: score_recording(acc[pos], models[pos][0], models[pos][1]) for pos in config.POSITIONS}
+        alarms = fuse(cands["phone"], cands["wrist"], models["phone"][2], models["wrist"][2], DEFAULT_RULE)
+        cases.append({"id": r["id"], "activity": r["activity"], "phone": r["phone"], "wrist": r["wrist"],
+                      "candidates": {pos: {"peaks": c.peaks.tolist(), "probs": c.probs.tolist()} for pos, c in cands.items()},
+                      "alarms": alarms.tolist()})
+    return cases
+
+
 def resample_golden() -> dict:
     rng = np.random.default_rng(1)
     t = np.cumsum(rng.uniform(5, 40, 200))       # irregular 25-200 Hz timestamps (ms)
@@ -139,7 +156,7 @@ def resample_golden() -> dict:
 
 
 def main() -> None:
-    data = pickle.loads(config.PROCESSED_DIR / "recordings.pkl".read_bytes())
+    data = load_recordings()
     metrics = json.loads((config.REPORTS_DIR / "metrics.json").read_text())
     demo_subjects = pick_demo_subjects(data)
     print("demo (held-out) subjects:", demo_subjects)
@@ -148,9 +165,12 @@ def main() -> None:
 
     model_cfg = {"fs": config.FS, "pre": config.PRE, "post": config.POST, "win": config.WIN,
                  "peak_half_width": config.PEAK_HALF_WIDTH, "refractory_s": config.REFRACTORY_S,
-                 "feature_names": FEATURE_NAMES, "deployed_model": DEPLOYED,
+                 "fusion": {"rule": DEFAULT_RULE, "match_s": MATCH_S, "logodds_clip": LOGODDS_CLIP},
+                 "feature_names": FEATURE_NAMES,
+                 "deployed_model": DEPLOYED,  # informational: the browser always runs this ensemble (model.js)
                  "demo_subjects": demo_subjects, "positions": {}}
     golden = {"resample": resample_golden(), "positions": {}}
+    models = {}
     for pos in config.POSITIONS:
         recs = [r for r in data[pos] if r.subject not in demo_subjects]
         trig = choose_trigger(recs)
@@ -176,14 +196,13 @@ def main() -> None:
             "top_features": dict(list(ens.members[0].feature_importance().items())[:8]),
         }
         golden["positions"][pos] = golden_vectors(pos, recs, ens, trig, thr)
+        models[pos] = (ens, trig, thr)
 
     (config.WEB_MODELS_DIR / "model_config.json").write_text(json.dumps(model_cfg, indent=2))
-    (config.ROOT / "web" / "src" / "engine").mkdir(parents=True, exist_ok=True)
-    (config.ROOT / "web" / "src" / "engine" / "golden.json").write_text(json.dumps(golden))
 
     # demo replays: synchronised phone + wrist streams from held-out subjects
     phone_by_trial = {r.trial_id: r for r in data["phone"] if r.dataset == "umafall"}
-    index = []
+    index, replays = [], []
     for w in data["wrist"]:
         if w.subject not in demo_subjects or w.activity not in REPLAY_ACTIVITIES:
             continue
@@ -193,10 +212,15 @@ def main() -> None:
         if len([i for i in index if i["activity"] == rj["activity"]]) >= 2:
             continue  # two takes per activity is plenty
         (config.WEB_DATA_DIR / f"{rj['id']}.json").write_text(json.dumps(rj, separators=(",", ":")))
+        replays.append(rj)
         index.append({k: rj[k] for k in ("id", "title", "kind", "activity", "subject")} |
                      {"duration_s": round(len(rj["wrist"]) / config.FS, 1)})
     index.sort(key=lambda i: (i["kind"] != "fall", i["title"]))
     (config.WEB_DATA_DIR / "index.json").write_text(json.dumps(index, indent=1))
+
+    golden["fusion"] = {"thresholds": {p: models[p][2] for p in config.POSITIONS},
+                        "cases": fusion_golden(sorted(replays, key=lambda r: r["id"]), models)}
+    (config.ROOT / "web" / "src" / "engine" / "golden.json").write_text(json.dumps(golden))
     print(f"wrote {len(index)} replays, models and config to {config.WEB_MODELS_DIR.parent}")
 
 

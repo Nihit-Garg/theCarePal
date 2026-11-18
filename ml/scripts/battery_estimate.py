@@ -17,6 +17,7 @@ import numpy as np
 import onnxruntime as ort
 
 from fallguard import config
+from fallguard.datasets import load_recordings
 from fallguard.signal import find_candidate_peaks, magnitude, window_channels, window_features
 
 # ---- assumptions (typical datasheet / published values; adjust for a given device) ----
@@ -41,8 +42,11 @@ BURST_AT = 0.5           # ... i.e. score >= 0.5 x the wearable's alarm threshol
 BLE_STREAM_MW = 1.2      # streaming raw 20 Hz accel to the phone over BLE
 
 
-def candidate_rates(data) -> dict[str, float]:
-    meta = json.loads((config.WEB_MODELS_DIR / "model_config.json").read_text())
+def load_meta() -> dict:
+    return json.loads((config.WEB_MODELS_DIR / "model_config.json").read_text())
+
+
+def candidate_rates(data, meta: dict) -> dict[str, float]:
     out = {}
     for pos, recs in data.items():
         trig = meta["positions"][pos]["trigger_g"]
@@ -52,11 +56,11 @@ def candidate_rates(data) -> dict[str, float]:
     return out
 
 
-def burst_rate_per_hour() -> float:
+def burst_rate_per_hour(meta: dict) -> float:
     """Out-of-fold wrist candidates on ADL with score >= BURST_AT x threshold, per hour
     (from eval_fusion.py's cached held-out scores)."""
-    scored = pickle.loads(config.PROCESSED_DIR / "fusion_scores.pkl".read_bytes())
-    thr = json.loads((config.WEB_MODELS_DIR / "model_config.json").read_text())["positions"]["wrist"]["threshold"]
+    scored = pickle.loads((config.PROCESSED_DIR / "fusion_scores.pkl").read_bytes())
+    thr = meta["positions"]["wrist"]["threshold"]
     n = hours = 0.0
     for _, wr, c in scored:
         if not wr.label:
@@ -65,8 +69,7 @@ def burst_rate_per_hour() -> float:
     return n / hours
 
 
-def inference_ms(pos: str) -> float:
-    meta = json.loads((config.WEB_MODELS_DIR / "model_config.json").read_text())
+def inference_ms(pos: str, meta: dict) -> float:
     files = meta["positions"][pos]["models"]
     lgb = ort.InferenceSession(str(config.WEB_MODELS_DIR / files["lightgbm"]))
     cnn = ort.InferenceSession(str(config.WEB_MODELS_DIR / files["cnn"]))
@@ -82,12 +85,13 @@ def inference_ms(pos: str) -> float:
 
 
 def main() -> None:
-    data = pickle.loads(config.PROCESSED_DIR / "recordings.pkl".read_bytes())
-    rates = candidate_rates(data)
-    bursts_h = burst_rate_per_hour()
+    data = load_recordings()
+    meta = load_meta()
+    rates = candidate_rates(data, meta)
+    bursts_h = burst_rate_per_hour(meta)
     res = {}
     for pos, d in DEVICES.items():
-        ms_local = inference_ms(pos)
+        ms_local = inference_ms(pos, meta)
         ms_dev = ms_local * d["mobile_slowdown"]
         cands_day = rates[pos] * REAL_LIFE_FACTOR * WAKING_HOURS
         j = {  # joules per day

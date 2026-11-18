@@ -3,18 +3,13 @@
     python ml/scripts/prepare_data.py
 """
 import collections
-import pickle
 
-from fallguard import config
-from fallguard.datasets import load_all
+from fallguard.datasets import load_all, save_recordings
 
 
 def main() -> None:
     data = load_all()
-    config.PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
-    out = config.PROCESSED_DIR / "recordings.pkl"
-    with open(out, "wb") as fh:
-        pickle.dump(data, fh)
+    out = save_recordings(data)
     for pos, recs in data.items():
         c = collections.Counter((r.dataset, "fall" if r.label else "adl") for r in recs)
         hours = sum(r.duration_s for r in recs if not r.label) / 3600

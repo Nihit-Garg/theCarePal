@@ -16,34 +16,24 @@ import pickle
 
 import numpy as np
 
-from fallguard import config
-from fallguard.detector import alarms_from_candidates, main_impact, score_recording
-from fallguard.evaluate import MATCH_TOL, choose_trigger, subject_folds, summarize, training_windows
-from fallguard.fusion import RULES, fuse
+from fallguard import config, fusion
+from fallguard.datasets import load_recordings
+from fallguard.detector import alarms_from_candidates, score_recording
+from fallguard.evaluate import choose_trigger, counts_from_alarms, subject_folds, summarize, training_windows
+from fallguard.fusion import DEFAULT_RULE, RULES, fuse
 from fallguard.models import EnsembleModel
 
 
-def counts(pairs, alarm_fn) -> dict:
-    tp = fn = tn = fpt = fa = 0
-    hours = 0.0
-    for _phone, wr, c in pairs:
-        alarms = alarm_fn(c)
-        if wr.label:
-            imp = main_impact(wr.acc)
-            hit = len(alarms) and np.min(np.abs(alarms - imp)) <= MATCH_TOL
-            tp, fn = tp + int(bool(hit)), fn + int(not hit)
-        else:
-            hours += wr.duration_s / 3600
-            fa += len(alarms)
-            tn, fpt = tn + (len(alarms) == 0), fpt + (len(alarms) > 0)
-    return summarize(dict(tp=tp, fn=fn, tn=tn, fp_trials=fpt, false_alarms=fa, adl_hours=hours))
+def counts(scored, alarm_fn) -> dict:
+    """Event-level metrics; the wrist recording carries the label and impact time."""
+    return summarize(counts_from_alarms((wr, alarm_fn(c)) for _phone, wr, c in scored))
 
 
 CACHE = config.PROCESSED_DIR / "fusion_scores.pkl"
 
 
 def score_all() -> list:
-    data = pickle.loads(config.PROCESSED_DIR / "recordings.pkl".read_bytes())
+    data = load_recordings()
     phone_by_trial = {r.trial_id: r for r in data["phone"] if r.dataset == "umafall"}
     pairs_all = [(phone_by_trial[w.trial_id], w) for w in data["wrist"] if w.trial_id in phone_by_trial]
     uma_subjects = sorted({w.subject for _, w in pairs_all})
@@ -86,14 +76,34 @@ def main() -> None:
            "wrist_only": counts(scored, lambda c: alarms_from_candidates(c["wrist"], thr["wrist"]))}
     for rule in RULES:
         res[f"fused_{rule}"] = counts(scored, lambda c, r=rule: fuse(c["phone"], c["wrist"], thr["phone"], thr["wrist"], r))
+    # robustness of the shipped rule to its one constant (fixed at 3 before evaluation, not tuned)
+    clip0 = fusion.LOGODDS_CLIP
+    sensitivity = {}
+    for clip in (2.0, 4.0):
+        fusion.LOGODDS_CLIP = clip
+        m = counts(scored, lambda c: fuse(c["phone"], c["wrist"], thr["phone"], thr["wrist"], "logodds"))
+        sensitivity[f"logodds_clip_{clip:g}"] = {k: m[k] for k in ("sensitivity", "specificity", "false_alarms_per_hour")}
+    fusion.LOGODDS_CLIP = clip0
+    res["clip_sensitivity_check"] = sensitivity
     (config.REPORTS_DIR / "fusion.json").write_text(json.dumps(res, indent=2))
-    lines = ["# Fusion of phone + wrist (UMAFall, synchronised recordings, subject-wise 5-fold CV)", "",
+    names = {"phone_only": "Phone only", "wrist_only": "Wrist only", "fused_or": "Either device (OR)",
+             "fused_and": "Both devices (AND)", "fused_mean": "Mean of p/threshold (previous rule)",
+             "fused_logodds": "Log-odds margins, clip ±3 (shipped)"}
+    lines = ["# Fusion of phone + wrist", "",
+             "UMAFall recorded phone and wrist simultaneously. Subject-wise 5-fold CV over its 19 people: each "
+             "fold's models never saw the test people. Thresholds are the shipped ones (nested-CV medians from "
+             "metrics.json); those were chosen in CV folds that also contained these people as *training* data "
+             "in other folds, so treat the absolute numbers as slightly optimistic — the comparison between rules "
+             "is the point.", "",
              "| Strategy | Sensitivity | Specificity | False alarms / hour | Falls detected |", "|---|---|---|---|---|"]
-    for k, m in res.items():
-        if k == "thresholds":
-            continue
-        lines.append(f"| {k} | {m['sensitivity']:.1%} | {m['specificity']:.1%} | "
+    for k, label in names.items():
+        m = res[k]
+        lines.append(f"| {label} | {m['sensitivity']:.1%} | {m['specificity']:.1%} | "
                      f"{m['false_alarms_per_hour']:.2f} | {m['tp']}/{m['tp'] + m['fn']} |")
+    lines += ["", f"Shipped rule: `{DEFAULT_RULE}`. Its clip constant was fixed at 3 before evaluation; for transparency, "
+              "the same rule with other clips: " + ", ".join(
+                  f"{k.split('_')[-1]} → sensitivity {v['sensitivity']:.1%}, {v['false_alarms_per_hour']:.2f} FA/h"
+                  for k, v in sensitivity.items()) + "."]
     (config.REPORTS_DIR / "fusion.md").write_text("\n".join(lines) + "\n")
     print("\n".join(lines))
 

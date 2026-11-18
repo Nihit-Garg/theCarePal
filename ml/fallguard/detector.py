@@ -25,7 +25,11 @@ class Candidates:
 
 
 def score_recording(acc: np.ndarray, model, trigger_g: float) -> Candidates:
+    """Stage 1 + stage 2 over a whole recording. Like the streaming detector, a peak
+    is only judged once 2.5 s (POST) of data after it exist — peaks in the last 2.5 s
+    of a recording are never scored (the product would see more data first)."""
     peaks = find_candidate_peaks(magnitude(acc), trigger_g)
+    peaks = peaks[peaks <= len(acc) - 1 - config.POST]
     if len(peaks) == 0:
         return Candidates(peaks, np.zeros(0, dtype=np.float32))
     wins = np.stack([extract_window(acc, p) for p in peaks])

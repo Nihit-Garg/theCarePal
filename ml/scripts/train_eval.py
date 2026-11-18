@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import pickle
 import time
 from collections import Counter, defaultdict
 
@@ -24,6 +23,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from fallguard import config
+from fallguard.datasets import load_recordings
 from fallguard.detector import Candidates, alarms_from_candidates, score_recording
 from fallguard.evaluate import (
     RecResult,
@@ -131,12 +131,8 @@ def false_alarms_by_activity(res: list[RecResult], name: str) -> dict:
     c = Counter()
     for rr in res:
         if not rr.rec.label:
-            c[rr.rec.activity] += len(alarms_from_candidates(rr.cands, _fold_thr(rr, name)))
+            c[rr.rec.activity] += len(alarms_from_candidates(rr.cands, rr.fold_thr))
     return dict(c.most_common())
-
-
-def _fold_thr(rr, name):
-    return 0.5 if name == "threshold_only" else rr.fold_thr
 
 
 def subgroup_metrics(res: list[RecResult], name: str) -> dict:
@@ -149,7 +145,7 @@ def subgroup_metrics(res: list[RecResult], name: str) -> dict:
     for g, rs in groups.items():
         tot = defaultdict(float)
         for rr in rs:
-            c = event_counts([rr], _fold_thr(rr, name))
+            c = event_counts([rr], rr.fold_thr)
             for key, v in c.items():
                 tot[key] += v
         out[g] = summarize(dict(tot))
@@ -251,7 +247,7 @@ def main() -> None:
     if args.report_only:
         write_reports({})
         return
-    data = pickle.loads(config.PROCESSED_DIR / "recordings.pkl".read_bytes())
+    data = load_recordings()
     all_res = {}
     for pos in args.positions:
         print(f"== {pos}", flush=True)

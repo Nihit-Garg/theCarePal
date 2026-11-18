@@ -36,7 +36,7 @@ class ClassicModel:
     def featurize(wins: np.ndarray) -> np.ndarray:
         return np.stack([window_features(w) for w in wins])
 
-    def fit(self, wins, y, wins_val=None, y_val=None) -> ClassicModel:
+    def fit(self, wins, y) -> ClassicModel:
         self.clf.fit(self.featurize(wins), y)
         return self
 
@@ -68,28 +68,28 @@ class FallCNN(nn.Module):
 
 
 class CNNModel:
+    """Trained for a fixed 30 epochs with a cosine learning-rate schedule (no early
+    stopping: all non-test people are used for training; the threshold is chosen
+    separately by inner cross-validation)."""
     name = "cnn"
 
-    def __init__(self, epochs: int = 30, batch: int = 128, lr: float = 2e-3, patience: int = 8) -> None:
-        self.epochs, self.batch, self.lr, self.patience = epochs, batch, lr, patience
+    def __init__(self, epochs: int = 30, batch: int = 128, lr: float = 2e-3) -> None:
+        self.epochs, self.batch, self.lr = epochs, batch, lr
         self.net = FallCNN()
 
     @staticmethod
     def channels(wins: np.ndarray) -> np.ndarray:
         return np.stack([window_channels(w) for w in wins])
 
-    def fit(self, wins, y, wins_val=None, y_val=None) -> CNNModel:
+    def fit(self, wins, y) -> CNNModel:
         torch.manual_seed(SEED)
         rng = np.random.default_rng(SEED)
         X = torch.from_numpy(self.channels(wins))
         Y = torch.from_numpy(np.asarray(y, dtype=np.float32))
-        Xv = torch.from_numpy(self.channels(wins_val)) if wins_val is not None else None
-        Yv = torch.from_numpy(np.asarray(y_val, dtype=np.float32)) if y_val is not None else None
         pos_weight = (len(Y) - Y.sum()) / Y.sum().clamp(min=1.0)
         loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         opt = torch.optim.AdamW(self.net.parameters(), lr=self.lr, weight_decay=1e-3)
         sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, self.epochs)
-        best, best_state, bad = np.inf, None, 0
         for _ in range(self.epochs):
             self.net.train()
             perm = rng.permutation(len(X))
@@ -103,20 +103,6 @@ class CNNModel:
                 loss_fn(self.net(xb), Y[b]).backward()
                 opt.step()
             sched.step()
-            if Xv is None:
-                continue
-            self.net.eval()
-            with torch.no_grad():
-                vl = loss_fn(self.net(Xv), Yv).item()
-            if vl < best - 1e-4:
-                best, bad = vl, 0
-                best_state = {k: v.clone() for k, v in self.net.state_dict().items()}
-            else:
-                bad += 1
-                if bad >= self.patience:
-                    break
-        if best_state is not None:
-            self.net.load_state_dict(best_state)
         self.net.eval()
         return self
 
@@ -137,13 +123,10 @@ class EnsembleModel:
     def __init__(self) -> None:
         self.members = [ClassicModel(), CNNModel()]
 
-    def fit(self, wins, y, wins_val=None, y_val=None) -> EnsembleModel:
+    def fit(self, wins, y) -> EnsembleModel:
         for m in self.members:
-            m.fit(wins, y, wins_val, y_val)
+            m.fit(wins, y)
         return self
 
     def predict_proba(self, wins: np.ndarray) -> np.ndarray:
         return np.mean([m.predict_proba(wins) for m in self.members], axis=0).astype(np.float32)
-
-
-MODELS = {"lightgbm": ClassicModel, "cnn": CNNModel, "ensemble": EnsembleModel}
