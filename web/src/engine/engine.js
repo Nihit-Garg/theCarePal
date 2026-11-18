@@ -1,28 +1,40 @@
 // FallEngine: receives fs-rate samples from any device, runs the per-device
 // detectors and models, picks the active mode, fuses, and raises alarms.
-// Device-agnostic: a "device" is just a stream of [x,y,z] in g plus optional
-// heart rate and an on-body flag. Real adapters (Wear OS, HealthKit, BLE) and the
-// simulator both feed it through the same three methods:
+// Device-agnostic: a "device" is just a stream of [x,y,z] in g at cfg.fs plus
+// optional heart rate and an on-body flag. Real adapters (Wear OS, HealthKit, BLE)
+// and the simulator feed it through the same three methods:
 //   setDeviceStatus(id, patch) · pushSample(id, [x,y,z], t) · pushHeartRate(t, bpm)
+// Samples must already be at cfg.fs: wrap a device's native rate with BinResampler
+// (see livePhone.js). Observers: on(fn) for detection events, tap(fn) for every
+// raw sample (the recorder).
 
 import { DeviceDetector } from './detector.js';
-import { MATCH_S, MODES, fuseScores, isResting, selectMode, PHONE_RESTING_S } from './fusion.js';
+import { MODES, PHONE_RESTING_S, fuseScores, isResting, margin, selectMode } from './fusion.js';
 
 const DEVICE_IDS = ['phone', 'wrist'];
+const DEFAULT_FUSION = { rule: 'logodds', match_s: 1.5, logodds_clip: 3 };
+const INFERENCE_MARGIN_S = 0.5;
 
 export class FallEngine {
-  constructor(cfg, models, { rule = 'mean' } = {}) {
+  constructor(cfg, models) {
     this.cfg = cfg;
     this.models = models; // { phone: FallModel, wrist: FallModel }
-    this.rule = rule;
+    this.fusion = cfg.fusion || DEFAULT_FUSION;
+    // A fused decision about a peak at time t waits until the other device's
+    // candidate (peak up to match_s later) has been detected (post seconds after
+    // its peak) and scored.
+    this.fuseWait = this.fusion.match_s + cfg.post / cfg.fs + INFERENCE_MARGIN_S;
+    this.thresholds = { phone: cfg.positions.phone.threshold, wrist: cfg.positions.wrist.threshold };
     this.listeners = new Set();
+    this.taps = new Set();
+    this.inflight = new Set();
     this.devices = {};
     for (const id of DEVICE_IDS) {
       this.devices[id] = {
-        id, connected: false, worn: id === 'wrist' ? false : true, resting: false, lastSampleT: null,
+        id, connected: false, worn: id !== 'wrist', resting: false, lastSampleT: null,
         detector: new DeviceDetector(cfg, cfg.positions[id]),
         threshold: cfg.positions[id].threshold,
-        candidates: [], // {t, p, pLgb, pCnn, peakG, ms}
+        candidates: [], // {t, p, pLgb, pCnn, peakG, ms, s}
       };
     }
     this.hr = []; // {t, bpm}
@@ -34,16 +46,22 @@ export class FallEngine {
   }
 
   on(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
+  /** fn(kind, deviceId, value, t): kind 'sample' (value [x,y,z]) or 'hr' (value bpm). */
+  tap(fn) { this.taps.add(fn); return () => this.taps.delete(fn); }
   emit(type, data) { for (const fn of this.listeners) fn(type, data); }
 
+  /** Emits 'status' (with snapshot()) only when something actually changed. */
   setDeviceStatus(id, patch) {
     const d = this.devices[id];
+    const changed = Object.entries(patch).some(([k, v]) => d[k] !== v);
+    if (!changed) return;
     Object.assign(d, patch);
-    if (patch.connected === false) { d.detector.reset(); d.candidates = []; d.lastSampleT = null; }
+    if (patch.connected === false) { d.detector.reset(); d.candidates = []; d.lastSampleT = null; d.resting = false; }
     this.emit('status', this.snapshot());
   }
 
   pushHeartRate(t, bpm) {
+    for (const fn of this.taps) fn('hr', 'wrist', bpm, t);
     this.hr.push({ t, bpm });
     if (this.hr.length > 600) this.hr.splice(0, this.hr.length - 600);
   }
@@ -52,12 +70,23 @@ export class FallEngine {
     const d = this.devices[id];
     if (!d.connected) return;
     d.lastSampleT = t;
+    for (const fn of this.taps) fn('sample', id, sample, t);
     const cand = d.detector.push(sample);
     if (id === 'phone' && d.detector.length % this.cfg.fs === 0) {
-      d.resting = d.detector.length > PHONE_RESTING_S * this.cfg.fs &&
+      const resting = d.detector.length > PHONE_RESTING_S * this.cfg.fs &&
         isResting(d.detector.recentMags(PHONE_RESTING_S), sample);
+      if (resting !== d.resting) this.setDeviceStatus('phone', { resting });
     }
-    if (cand) this.scoreCandidate(d, cand, t - this.cfg.post / this.cfg.fs);
+    if (cand) {
+      const job = this.scoreCandidate(d, cand, t - this.cfg.post / this.cfg.fs);
+      this.inflight.add(job);
+      job.finally(() => this.inflight.delete(job));
+    }
+  }
+
+  /** Resolves when every candidate pushed so far has been scored (used by tests). */
+  async idle() {
+    while (this.inflight.size) await Promise.allSettled([...this.inflight]);
   }
 
   async scoreCandidate(d, cand, peakT) {
@@ -78,26 +107,29 @@ export class FallEngine {
     if (mode === MODES.BOTH) {
       this.pending.push({ t: c.t, deviceId });
     } else if ((mode === MODES.WEARABLE && deviceId === 'wrist') || (mode === MODES.PHONE && deviceId === 'phone')) {
-      if (c.s >= 1) this.raise(c.t, { [deviceId]: c }, `${deviceId === 'wrist' ? 'Wearable' : 'Phone'} model`);
+      if (c.p >= this.devices[deviceId].threshold) this.raise(c.t, { [deviceId]: c }, `${deviceId === 'wrist' ? 'Wearable' : 'Phone'} model`);
     }
   }
 
-  /** Call regularly (e.g. every 100 ms) with the current time. */
+  /** Call regularly (e.g. every 50–100 ms) with the current time. */
   tick(now) {
     const prev = this.mode;
     this.mode = selectMode(this.devices, now);
     if (prev !== this.mode) this.emit('mode', this.mode);
-    // resolve fused decisions once both devices had time to report on the moment
-    const ready = this.pending.filter((p) => now >= p.t + MATCH_S + 1.0);
-    this.pending = this.pending.filter((p) => now < p.t + MATCH_S + 1.0);
+    const ready = this.pending.filter((p) => now >= p.t + this.fuseWait);
+    this.pending = this.pending.filter((p) => now < p.t + this.fuseWait);
     for (const p of ready.sort((a, b) => a.t - b.t)) {
       const best = (id) => {
-        const near = this.devices[id].candidates.filter((x) => Math.abs(x.t - p.t) <= MATCH_S);
+        // +1e-6: times are floats (i / fs); Python compares integer sample indices
+        const near = this.devices[id].candidates.filter((x) => Math.abs(x.t - p.t) <= this.fusion.match_s + 1e-6);
         return near.length ? near.reduce((a, b) => (b.p > a.p ? b : a)) : null;
       };
       const cp = best('phone'), cw = best('wrist');
-      const sP = cp ? cp.s : 0, sW = cw ? cw.s : 0;
-      if (fuseScores(sP, sW, this.rule)) this.raise(p.t, { phone: cp, wrist: cw }, `Fused (${this.rule}) score ${((sP + sW) / 2).toFixed(2)}`);
+      if (fuseScores(cp?.p ?? null, cw?.p ?? null, this.thresholds, this.fusion)) {
+        const clip = this.fusion.logodds_clip;
+        const m = margin(cp?.p ?? null, this.thresholds.phone, clip) + margin(cw?.p ?? null, this.thresholds.wrist, clip);
+        this.raise(p.t, { phone: cp, wrist: cw }, `Fused (${this.fusion.rule}) evidence ${m >= 0 ? '+' : ''}${m.toFixed(1)}`);
+      }
     }
   }
 
@@ -142,3 +174,4 @@ export class FallEngine {
     return out;
   }
 }
+

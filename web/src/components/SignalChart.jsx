@@ -15,7 +15,8 @@ export default function SignalChart({ store, thresholds }) {
     const draw = () => {
       const dpr = window.devicePixelRatio || 1;
       const w = canvas.clientWidth, h = canvas.clientHeight;
-      if (canvas.width !== w * dpr) { canvas.width = w * dpr; canvas.height = h * dpr; }
+      const pw = Math.round(w * dpr), ph = Math.round(h * dpr); // canvas sizes are integers
+      if (canvas.width !== pw || canvas.height !== ph) { canvas.width = pw; canvas.height = ph; }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
       const css = getComputedStyle(canvas);

@@ -61,9 +61,9 @@ for (const [pos, g] of Object.entries(golden.positions)) {
       const det = new DeviceDetector(cfg, cfg.positions[pos]);
       const found = [];
       for (const s of acc) { const c = det.push(s); if (c) found.push(c.index); }
-      // a streaming detector can only judge peaks it has seen 2.5 s past
-      const expected = candidate_peaks.filter((i) => i <= acc.length - 1 - cfg.post);
-      expect(found).toEqual(expected);
+      // Python's score_recording, like the streaming detector, only judges peaks
+      // with 2.5 s of data after them, so the lists must be identical
+      expect(found).toEqual(candidate_peaks);
     });
   });
 }

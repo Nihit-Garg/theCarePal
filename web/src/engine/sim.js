@@ -102,13 +102,12 @@ export class HeartRateSim {
     this.target = this.base;
   }
 
-  update(dt, clip, clipIdx, fs) {
+  update(dt, clip, clipIdx) {
     if (clip?.kind === 'fall' && clipIdx >= clip.impactIdx) this.target = this.base + 26;
     else if (['Jogging', 'Hopping'].includes(clip?.activity)) this.target = this.base + 30;
     else if (clip?.kind === 'adl') this.target = this.base + 6;
     else if (this.target > this.base) this.target -= dt * 0.15; // slow recovery
     this.bpm += (this.target - this.bpm) * Math.min(1, dt / 6) + (Math.random() - 0.5) * 0.6;
-    void fs;
     return Math.round(this.bpm);
   }
 }

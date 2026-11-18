@@ -1,16 +1,14 @@
 // Device selection + fusion (mirrors ml/fallguard/fusion.py).
 //
-//   wearable connected & worn & streaming  +  phone streaming & on the person  -> BOTH (fused)
-//   wearable connected & worn & streaming                                     -> WEARABLE
-//   phone streaming                                                           -> PHONE
-//   nothing                                                                   -> NONE (warn)
+//   wearable connected & worn & streaming  +  phone streaming & not resting on a table -> BOTH (fused)
+//   wearable connected & worn & streaming                                              -> WEARABLE
+//   phone streaming                                                                    -> PHONE
+//   nothing                                                                            -> NONE (warn)
 //
-// In BOTH mode each device's candidate is held for MATCH_S seconds so the other
-// device's view of the same moment can be considered, then scores (normalised by
-// each device's own threshold) are combined with the rule measured best in
-// reports/fusion.md.
+// Fusion settings (rule, matching window, log-odds clip) come from
+// model_config.json, written by export_models.py from the Python constants, so
+// the two implementations can't drift apart.
 
-export const MATCH_S = 1.5;
 export const STALE_S = 2.0;           // no samples for 2 s => device considered disconnected
 export const PHONE_RESTING_S = 30;    // phone still AND flat this long => probably on a table
 
@@ -33,11 +31,25 @@ export function selectMode(devices, now) {
   return MODES.NONE;
 }
 
-/** Combine normalised scores (s >= 1 means that device alone would alarm). */
-export function fuseScores(sPhone, sWrist, rule = 'mean') {
-  if (rule === 'or') return Math.max(sPhone, sWrist) >= 1;
-  if (rule === 'and') return Math.min(sPhone, sWrist) >= 1;
-  return (sPhone + sWrist) / 2 >= 1;
+const logit = (p) => { const q = Math.min(Math.max(p, 1e-4), 1 - 1e-4); return Math.log(q / (1 - q)); };
+
+/** Evidence for a fall relative to a device's own threshold (0 = on the line),
+ * clipped to +/-clip. A device with no candidate near the moment counts as -clip. */
+export function margin(p, threshold, clip) {
+  if (p == null) return -clip;
+  return Math.min(Math.max(logit(p) - logit(threshold), -clip), clip);
+}
+
+/** pPhone / pWrist: each device's best probability near the moment, or null if it
+ * had no candidate. fusion: { rule, logodds_clip } from model_config.json. */
+export function fuseScores(pPhone, pWrist, thr, fusion) {
+  const { rule, logodds_clip: clip } = fusion;
+  if (rule === 'logodds') return margin(pPhone, thr.phone, clip) + margin(pWrist, thr.wrist, clip) >= 0;
+  const sP = (pPhone ?? 0) / thr.phone, sW = (pWrist ?? 0) / thr.wrist;
+  if (rule === 'or') return Math.max(sP, sW) >= 1;
+  if (rule === 'and') return Math.min(sP, sW) >= 1;
+  if (rule === 'mean') return (sP + sW) / 2 >= 1;
+  throw new Error(`Unknown fusion rule: ${rule}`);
 }
 
 /** Phone "resting on a surface": |a| essentially constant for PHONE_RESTING_S and

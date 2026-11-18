@@ -1,16 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import './App.css';
-import AlertOverlay from './components/AlertOverlay.jsx';
-import SignalChart from './components/SignalChart.jsx';
-import { FallEngine } from './engine/engine.js';
-import { MODES } from './engine/fusion.js';
-import { liveMotionSupported, requestMotionPermission, startLivePhone } from './engine/livePhone.js';
-import { FallModel, loadConfig } from './engine/model.js';
-import { notifyCaregiver } from './engine/notify.js';
-import { HeartRateSim, ScenarioPlayer, loadReplays } from './engine/sim.js';
-import { magnitude } from './engine/signal.js';
+import AlertOverlay from '../components/AlertOverlay.jsx';
+import RecorderPanel from '../components/RecorderPanel.jsx';
+import SignalChart from '../components/SignalChart.jsx';
+import { FallEngine } from '../engine/engine.js';
+import { MODES } from '../engine/fusion.js';
+import { liveMotionSupported, requestMotionPermission, startLivePhone } from '../engine/livePhone.js';
+import { FallModel, loadConfig } from '../engine/model.js';
+import { notifyCaregiver } from '../engine/notify.js';
+import { magnitude } from '../engine/signal.js';
+import { HeartRateSim, ScenarioPlayer, loadReplays } from '../engine/sim.js';
+import { useWakeLock } from '../engine/wakeLock.js';
+import { LANGS } from '../i18n.js';
+import { getIncidentStore } from '../incidents/index.js';
+import { COUNTDOWN_S, cancelIncident, createIncident, escalateIncident } from '../incidents/model.js';
+import { usePref } from '../prefs.js';
+import { uid } from '../uid.js';
 
-const PERSON = 'Asha (demo)';
+export const PERSON = 'Asha (demo)';
 const TABLE_POSE = [0.01, 0.02, 1.0];
 const TRACE_S = 25;
 
@@ -18,7 +24,15 @@ function timeStr(d = new Date()) {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
-export default function App() {
+/** Where each device's numbers are coming from right now — never leave the viewer guessing. */
+function sourceLabel(clip, { synthetic }) {
+  if (synthetic) return synthetic;
+  if (!clip) return '';
+  if (!clip.subject) return `Synthetic · ${clip.title.toLowerCase()} (still)`;
+  return `Replay · UMAFall subject ${clip.subject.split(':')[1]} · ${clip.title}`;
+}
+
+export default function PersonView({ embedded = false }) {
   const [boot, setBoot] = useState({ state: 'loading', msg: 'Loading models…' });
   const [cfg, setCfg] = useState(null);
   const [clips, setClips] = useState([]);
@@ -26,38 +40,45 @@ export default function App() {
   const [wearable, setWearable] = useState({ connected: true, worn: true });
   const [phone, setPhone] = useState({ source: 'sim', onTable: false }); // sim | live | off
   const [normalDay, setNormalDay] = useState(true);
-  const [nowPlaying, setNowPlaying] = useState('');
+  const [clip, setClip] = useState(null);
   const [hr, setHr] = useState(null);
   const [log, setLog] = useState([]);
   const [alert, setAlert] = useState(null);
+  const [incident, setIncident] = useState(null);
   const [hrRise, setHrRise] = useState(null);
   const [liveMsg, setLiveMsg] = useState('');
+  const [lang, setLang] = usePref('lang', 'en');
+  const [fx, setFx] = usePref('alertFx', { sound: true, voice: true });
+  const [incStore, setIncStore] = useState(null);
+  const [phoneResting, setPhoneResting] = useState(false); // detected by the engine, not the checkbox
 
   const engineRef = useRef(null);
   const playerRef = useRef(null);
+  const incRef = useRef(null); // latest version of the current incident
   const store = useRef({ trace: { phone: [], wrist: [] }, cands: { phone: [], wrist: [] } });
   const devRef = useRef({ wearable, phone });
   devRef.current = { wearable, phone };
+  const wakeLock = useWakeLock(phone.source === 'live');
 
   const addLog = useCallback((kind, text) => {
-    setLog((l) => [{ id: crypto.randomUUID(), time: timeStr(), kind, text }, ...l].slice(0, 60));
+    setLog((l) => [{ id: uid(), time: timeStr(), kind, text }, ...l].slice(0, 60));
   }, []);
 
-  // ---- boot: config, models, replays --------------------------------------------------
+  // ---- boot: config, models, replays, incident store ----------------------------------
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const c = await loadConfig();
-        const [phoneModel, wristModel, replays] = await Promise.all([
-          FallModel.load(c, 'phone'), FallModel.load(c, 'wrist'), loadReplays(),
+        const [phoneModel, wristModel, replays, st] = await Promise.all([
+          FallModel.load(c, 'phone'), FallModel.load(c, 'wrist'), loadReplays(), getIncidentStore(),
         ]);
         if (cancelled) return;
-        const engine = new FallEngine(c, { phone: phoneModel, wrist: wristModel });
-        engineRef.current = engine;
+        engineRef.current = new FallEngine(c, { phone: phoneModel, wrist: wristModel });
         const player = new ScenarioPlayer(replays, c.fs);
-        player.onClipStart = (clip) => setNowPlaying(clip.title);
+        player.onClipStart = setClip;
         playerRef.current = player;
+        setIncStore(st);
         setCfg(c);
         setClips(replays);
         setBoot({ state: 'ready' });
@@ -68,12 +89,32 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
+  // ---- follow the current incident (a caregiver may acknowledge it from another device) --
+  useEffect(() => {
+    if (!incStore) return;
+    return incStore.subscribe((list) => {
+      const cur = incRef.current && list.find((i) => i.id === incRef.current.id);
+      if (cur) { incRef.current = cur; setIncident(cur); }
+    });
+  }, [incStore]);
+
+  const saveIncident = useCallback(async (inc) => {
+    incRef.current = inc;
+    setIncident(inc);
+    try {
+      await incStore.put(inc);
+    } catch (err) {
+      addLog('error', `Could not save the incident: ${err.message}`);
+    }
+  }, [incStore, addLog]);
+
   // ---- engine events ------------------------------------------------------------------
   useEffect(() => {
     const engine = engineRef.current;
     if (!engine) return;
     return engine.on((type, data) => {
       if (type === 'mode') { setMode(data); addLog('mode', `Active sensor: ${data.label}`); }
+      if (type === 'status') setPhoneResting(data.devices.phone.resting);
       if (type === 'candidate') {
         const c = store.current.cands[data.device];
         c.push(data);
@@ -84,13 +125,13 @@ export default function App() {
       if (type === 'alarm') {
         engine.suspended = true;
         setHrRise(null);
+        saveIncident(createIncident({ person: PERSON, alarm: data }));
         setAlert({ ...data, status: 'counting', startedAt: Date.now(), modeLabel: data.mode.label });
         addLog('alarm', `Possible fall — ${data.reason}`);
-        navigator.vibrate?.([400, 200, 400]);
       }
       if (type === 'error') addLog('error', data.message);
     });
-  }, [boot.state, addLog]);
+  }, [boot.state, addLog, saveIncident]);
 
   // ---- simulation clock (20 Hz) ------------------------------------------------------
   useEffect(() => {
@@ -122,7 +163,7 @@ export default function App() {
         }
         if (t - lastHr >= 1) {
           lastHr = t;
-          const bpm = hrSim.update(1, s.clip, s.clipIdx, fs);
+          const bpm = hrSim.update(1, s.clip, s.clipIdx);
           if (w.connected && w.worn) { engine.pushHeartRate(t, bpm); setHr(bpm); } else setHr(null);
         }
       }
@@ -158,12 +199,14 @@ export default function App() {
 
   const endAlert = useCallback(() => {
     engineRef.current.resume(performance.now() / 1000);
+    incRef.current = null;
+    setIncident(null);
     setAlert(null);
   }, []);
 
   const notify = useCallback(async (why) => {
     const a = alert;
-    if (!a) return;
+    if (!a || a.status !== 'counting') return;
     const rise = engineRef.current.hrRiseSince(a.t, a.hrBaseline);
     const scores = Object.entries(a.scores).filter(([, c]) => c)
       .map(([id, c]) => `${id === 'wrist' ? 'wearable' : 'phone'} ${Math.round(c.p * 100)}%`).join(', ');
@@ -172,21 +215,27 @@ export default function App() {
       `Time: ${timeStr(new Date(a.startedAt))}`,
       `Sensor: ${a.modeLabel} (${scores})`,
       rise != null ? `Heart rate: ${rise >= 0 ? '+' : ''}${Math.round(rise)} bpm after impact` : 'Heart rate: not available',
-      why === 'help' ? 'They pressed "Get help now".' : 'No response within 30 seconds.',
+      why === 'help' ? 'They pressed "Get help now".' : `No response within ${COUNTDOWN_S} seconds.`,
       'Please check on them now. (Automated alert — not a medical diagnosis.)',
     ].join('\n');
+    setAlert({ ...a, status: 'notified', message, notifyResult: 'Sending…' });
+    if (incRef.current) await saveIncident(escalateIncident(incRef.current, { reason: why, hrRise: rise, message }));
     const result = await notifyCaregiver({ person: PERSON, message, alert: { ...a, hrRise: rise } });
-    setAlert({ ...a, status: 'notified', message, notifyResult: result });
+    setAlert((cur) => cur && { ...cur, notifyResult: `Shown on the Caregiver screen (${incStore.label}). ${result}` });
     addLog('notify', `Caregiver notified (${why === 'help' ? 'help requested' : 'no response'})`);
-  }, [alert, addLog]);
+  }, [alert, addLog, saveIncident, incStore]);
 
-  const onCancel = useCallback(() => { addLog('cancel', 'Alert cancelled — person is OK'); endAlert(); }, [addLog, endAlert]);
+  const onCancel = useCallback(() => {
+    if (incRef.current) saveIncident(cancelIncident(incRef.current));
+    addLog('cancel', 'Alert cancelled — person is OK');
+    endAlert();
+  }, [addLog, endAlert, saveIncident]);
   const onExpire = useCallback(() => notify('timeout'), [notify]);
   const onHelpNow = useCallback(() => notify('help'), [notify]);
 
-  const play = (clip) => {
-    playerRef.current.play(clip);
-    addLog('play', `Scenario: ${clip.title} (${clip.kind === 'fall' ? 'fall' : 'everyday activity'})`);
+  const play = (c) => {
+    playerRef.current.play(c);
+    addLog('play', `Scenario: ${c.title} (${c.kind === 'fall' ? 'fall' : 'everyday activity'})`);
   };
 
   const enableLive = async () => {
@@ -222,9 +271,13 @@ export default function App() {
   const phoneState = phone.source === 'off' ? 'Off' : phone.onTable && phone.source === 'sim' ? 'Resting on a table' : phone.source === 'live' ? 'Live sensor' : 'Streaming';
   const wristActive = mode === MODES.WEARABLE || mode === MODES.BOTH;
   const phoneActive = mode === MODES.PHONE || mode === MODES.BOTH;
+  const wristSource = wearable.connected
+    ? sourceLabel(clip, { synthetic: !wearable.worn && 'Synthetic · watch lying on a table' }) : '';
+  const phoneSource = phone.source === 'live' ? "Live · this device's accelerometer"
+    : phone.source === 'sim' ? sourceLabel(clip, { synthetic: phone.onTable && 'Synthetic · phone lying on a table' }) : '';
 
   return (
-    <div className="app">
+    <div className={`person ${embedded ? 'embedded' : ''}`}>
       <header className="top">
         <div>
           <h1>FallGuard</h1>
@@ -242,7 +295,8 @@ export default function App() {
         <article className={`device ${wristActive ? 'active' : ''}`}>
           <header><span className="dot wrist" /> Wearable (wrist)</header>
           <p className="state">{wristState}{wristActive ? ' · in use' : ''}</p>
-          <p className="hr">{hr != null ? `♥ ${hr} bpm` : '♥ —'}</p>
+          <p className="hr">{hr != null ? `♥ ${hr} bpm` : '♥ —'} <span className="small muted">(simulated)</span></p>
+          {wristSource && <p className="source">{wristSource}</p>}
           <div className="toggles">
             <label><input type="checkbox" checked={wearable.connected} onChange={(e) => setWearable((w) => ({ ...w, connected: e.target.checked }))} /> Connected</label>
             <label><input type="checkbox" checked={wearable.worn} disabled={!wearable.connected} onChange={(e) => setWearable((w) => ({ ...w, worn: e.target.checked }))} /> Worn</label>
@@ -251,6 +305,7 @@ export default function App() {
         <article className={`device ${phoneActive ? 'active' : ''}`}>
           <header><span className="dot phone" /> Phone (pocket)</header>
           <p className="state">{phoneState}{phoneActive ? ' · in use' : ''}</p>
+          {phoneSource && <p className="source">{phoneSource}</p>}
           <div className="seg" role="radiogroup" aria-label="Phone source">
             {[['sim', 'Simulated'], ['live', 'This phone'], ['off', 'Off']].map(([k, label]) => (
               <button key={k} role="radio" aria-checked={phone.source === k} className={phone.source === k ? 'on' : ''}
@@ -261,16 +316,21 @@ export default function App() {
           <div className="toggles">
             <label><input type="checkbox" checked={phone.onTable} disabled={phone.source !== 'sim'} onChange={(e) => setPhone((p) => ({ ...p, onTable: e.target.checked }))} /> Left on a table</label>
           </div>
+          {phone.source === 'live' && wakeLock === 'on' && <p className="small muted">Screen kept awake so the sensor keeps streaming.</p>}
+          {phone.source === 'live' && ['unsupported', 'error'].includes(wakeLock) && <p className="small warn-text">Keep the screen on — browsers pause sensors when it locks.</p>}
           {liveMsg && <p className="small error">{liveMsg}</p>}
         </article>
       </section>
       {mode === MODES.NONE && <p className="warn">No sensor is active — falls cannot be detected right now.</p>}
-      {mode === MODES.PHONE && phone.onTable && <p className="warn">Phone hasn't moved for a while — it may not be on the person.</p>}
+      {phoneResting && mode !== MODES.NONE && (
+        <p className="warn">The phone has been still and flat for 30 s — it looks like it's on a table, not on the person.
+          {mode === MODES.PHONE ? ' Falls may be missed.' : ' Using the wearable only.'}</p>
+      )}
 
       <section className="card">
         <div className="row">
           <h2>Live signal</h2>
-          <span className="muted small">{nowPlaying ? `Now: ${nowPlaying}` : ''}</span>
+          <span className="muted small">{clip ? `Now: ${clip.title}` : ''}</span>
         </div>
         <SignalChart store={store} thresholds={thresholds} />
       </section>
@@ -291,12 +351,27 @@ export default function App() {
       </section>
 
       <section className="card">
+        <h2>Alert settings</h2>
+        <div className="toggles">
+          <div className="seg" role="radiogroup" aria-label="Alert language">
+            {Object.entries(LANGS).map(([k, label]) => (
+              <button key={k} role="radio" aria-checked={lang === k} className={lang === k ? 'on' : ''} onClick={() => setLang(k)}>{label}</button>
+            ))}
+          </div>
+          <label><input type="checkbox" checked={fx.sound} onChange={(e) => setFx((f) => ({ ...f, sound: e.target.checked }))} /> Alarm sound</label>
+          <label><input type="checkbox" checked={fx.voice} onChange={(e) => setFx((f) => ({ ...f, voice: e.target.checked }))} /> Spoken prompt</label>
+        </div>
+      </section>
+
+      <section className="card">
         <h2>Activity log</h2>
         <ul className="log">
           {log.length === 0 && <li className="muted">Events will appear here.</li>}
           {log.map((e) => <li key={e.id} className={`log-${e.kind}`}><time>{e.time}</time> {e.text}</li>)}
         </ul>
       </section>
+
+      <RecorderPanel engine={engineRef.current} />
 
       <details className="card about">
         <summary>About the models</summary>
@@ -317,8 +392,8 @@ export default function App() {
       </details>
 
       {alert && (
-        <AlertOverlay alert={alert} hrRise={hrRise} onCancel={onCancel} onHelpNow={onHelpNow}
-          onExpire={onExpire} onClose={endAlert} />
+        <AlertOverlay alert={alert} incident={incident} hrRise={hrRise} lang={lang} fx={fx}
+          onCancel={onCancel} onHelpNow={onHelpNow} onExpire={onExpire} onClose={endAlert} />
       )}
     </div>
   );

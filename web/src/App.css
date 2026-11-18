@@ -85,3 +85,70 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent);
 .alert-meta { display: flex; flex-direction: column; gap: 2px; font-size: 0.9rem; opacity: .95; }
 .hr-up { font-weight: 700; }
 .message { white-space: pre-wrap; background: var(--bg); border: 1px solid var(--border); padding: 12px; border-radius: 8px; font-size: 0.88rem; margin: 0; font-family: inherit; }
+
+/* ---- navigation + layouts ---------------------------------------------------------- */
+.nav { position: sticky; top: 0; z-index: 5; display: flex; gap: 4px; align-items: center; flex-wrap: wrap;
+  padding: 8px 16px; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border); }
+.nav a { color: var(--text); text-decoration: none; padding: 6px 12px; border-radius: 999px; font-size: 0.9rem; min-height: 34px; display: inline-flex; align-items: center; }
+.nav a.on { background: var(--accent); color: #fff; }
+.nav a.newtab { margin-left: auto; color: var(--muted); font-size: 0.82rem; }
+@media (max-width: 1099px) { .nav .wide-only { display: none; } }
+@media (max-width: 480px) { .nav a.newtab { display: none; } }
+
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; padding: 16px; max-width: 1600px; margin: 0 auto; }
+@media (max-width: 1099px) { .split { grid-template-columns: 1fr; } }
+.split-col { min-width: 0; }
+.person-col { position: relative; }
+/* in side-by-side mode the alert covers only the person's phone, like a real device */
+.person.embedded .overlay { position: absolute; border-radius: 16px; }
+
+/* ---- device cards: where the data comes from --------------------------------------- */
+.device .source { margin: 0 0 6px; font-size: 0.78rem; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.warn-text { color: var(--warn); }
+
+/* ---- small buttons, settings ------------------------------------------------------- */
+.btn-sm { border: 1px solid var(--border); background: var(--card); color: var(--text); border-radius: 8px; padding: 6px 12px; min-height: 36px; cursor: pointer; font-size: 0.88rem; }
+.btn-sm:hover:not(:disabled) { border-color: var(--accent); }
+.btn-sm:disabled { opacity: .5; cursor: not-allowed; }
+.btn-sm.primary { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
+.btn-sm.danger { color: var(--danger); border-color: var(--danger); }
+.btn-sm.outcome-fall { border-color: var(--danger); }
+.btn-sm.outcome-false_alarm { border-color: var(--ok); }
+.settings-row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; font-size: 0.9rem; }
+.settings-row input[type="text"] { margin-left: 6px; }
+input[type="text"] { font: inherit; font-size: 0.9rem; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); min-height: 36px; }
+.recorder summary { cursor: pointer; font-weight: 600; }
+.recorder .row { margin: 8px 0; justify-content: flex-start; }
+
+/* ---- caregiver ----------------------------------------------------------------------- */
+.count { display: inline-block; min-width: 22px; padding: 0 6px; border-radius: 999px; background: var(--grid); color: var(--muted); font-size: 0.8rem; text-align: center; margin-left: 4px; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+@media (max-width: 560px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stats div { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; }
+.stats b { font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+.stats span { font-size: 0.78rem; color: var(--muted); }
+.incident { border: 1px solid var(--border); border-left-width: 4px; border-radius: 10px; padding: 10px 12px; margin: 8px 0; background: var(--bg); }
+.incident header { margin-bottom: 2px; }
+.incident p { margin: 4px 0; }
+.incident.urgent { border-left-color: var(--danger); background: color-mix(in srgb, var(--danger) 7%, var(--bg)); }
+.incident.pending { border-left-color: #d99a00; }
+.incident.handling { border-left-color: var(--accent); }
+.incident.closed { border-left-color: var(--border); }
+.inc-status { font-weight: 600; }
+.incident .resolve { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.incident .resolve .row { justify-content: flex-start; }
+.incident .btn-sm.primary { margin-top: 6px; }
+.incident details { margin-top: 6px; }
+.incident summary { cursor: pointer; color: var(--muted); }
+.timeline { margin: 6px 0; padding-left: 18px; font-size: 0.85rem; }
+.timeline time { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 6px; }
+.badge { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 0.78rem; margin-left: 6px; border: 1px solid var(--border); font-weight: 600; }
+.badge.danger, .badge.fall { color: var(--danger); border-color: var(--danger); }
+.badge.false_alarm { color: var(--ok); border-color: var(--ok); }
+.badge.unsure { color: var(--muted); }
+
+/* ---- alert: caregiver status after escalation ------------------------------------- */
+.ack-status { font-size: 1.1rem; font-weight: 600; padding: 10px 12px; border-radius: 10px; background: var(--bg); border: 1px solid var(--border); }
+.ack-status.acked { color: var(--ok); border-color: var(--ok); }
+.overlay details summary { cursor: pointer; }
