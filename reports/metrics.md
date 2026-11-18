@@ -9,9 +9,9 @@ False alarms per hour are measured on lab ADL recordings, which are short, dense
 | Model | Sensitivity | Specificity | False alarms / hour of ADL | Falls detected | ADL hours |
 |---|---|---|---|---|---|
 | Threshold only (baseline) | 94.9% ± 0.5% | 65.0% ± 2.7% | 118.69 ± 6.75 | 1903/2006 | 16.76 |
-| LightGBM (classic) | 94.7% ± 2.6% | 99.6% ± 0.3% | 0.78 ± 0.67 | 1899/2006 | 16.76 |
-| 1D-CNN (small NN) | 95.6% ± 2.4% | 99.9% ± 0.1% | 0.30 ± 0.26 | 1917/2006 | 16.76 |
-| Ensemble (mean of both) | 94.9% ± 2.9% | 100.0% ± 0.0% | 0.00 ± 0.00 | 1903/2006 | 16.76 |
+| LightGBM (classic) | 95.0% ± 2.6% | 99.6% ± 0.3% | 0.78 ± 0.67 | 1905/2006 | 16.76 |
+| 1D-CNN (small NN) | 95.7% ± 2.6% | 99.9% ± 0.1% | 0.30 ± 0.26 | 1919/2006 | 16.76 |
+| Ensemble (mean of both) | 94.9% ± 3.0% | 100.0% ± 0.0% | 0.00 ± 0.00 | 1903/2006 | 16.76 |
 
 Subgroups (same thresholds):
 
@@ -20,15 +20,15 @@ Subgroups (same thresholds):
 | Threshold only (baseline) | umafall | 100.0% | 61.9% | 122.35 |
 | Threshold only (baseline) | elderly_60plus | 81.3% | 75.1% | 105.14 |
 | Threshold only (baseline) | sisfall | 94.3% | 65.6% | 118.12 |
-| LightGBM (classic) | umafall | 92.8% | 98.7% | 3.15 |
-| LightGBM (classic) | elderly_60plus | 74.7% | 100.0% | 0.00 |
-| LightGBM (classic) | sisfall | 94.9% | 99.8% | 0.41 |
-| 1D-CNN (small NN) | umafall | 92.3% | 99.4% | 1.35 |
-| 1D-CNN (small NN) | elderly_60plus | 72.0% | 100.0% | 0.00 |
-| 1D-CNN (small NN) | sisfall | 95.9% | 99.9% | 0.14 |
-| Ensemble (mean of both) | umafall | 90.9% | 100.0% | 0.00 |
-| Ensemble (mean of both) | elderly_60plus | 73.3% | 100.0% | 0.00 |
-| Ensemble (mean of both) | sisfall | 95.3% | 100.0% | 0.00 |
+| LightGBM (classic) | umafall | 92.3% | 98.7% | 3.15 |
+| LightGBM (classic) | elderly_60plus | 73.3% | 100.0% | 0.00 |
+| LightGBM (classic) | sisfall | 95.3% | 99.8% | 0.41 |
+| 1D-CNN (small NN) | umafall | 91.8% | 99.4% | 1.35 |
+| 1D-CNN (small NN) | elderly_60plus | 70.7% | 100.0% | 0.00 |
+| 1D-CNN (small NN) | sisfall | 96.1% | 99.9% | 0.14 |
+| Ensemble (mean of both) | umafall | 90.4% | 100.0% | 0.00 |
+| Ensemble (mean of both) | elderly_60plus | 72.0% | 100.0% | 0.00 |
+| Ensemble (mean of both) | sisfall | 95.4% | 100.0% | 0.00 |
 
 Note: the elderly_60plus fall sensitivity comes from a single SisFall subject (SE06), the only participant over 60 who performed falls. It is a warning sign that older people's falls may look different, not a reliable estimate.
 
@@ -73,9 +73,9 @@ False alarms by ADL activity (count over all held-out subjects):
 | Model | Sensitivity | Specificity | False alarms / hour of ADL | Falls detected | ADL hours |
 |---|---|---|---|---|---|
 | Threshold only (baseline) | 95.7% ± 3.4% | 68.4% ± 5.1% | 101.49 ± 22.15 | 199/208 | 2.22 |
-| LightGBM (classic) | 93.8% ± 4.9% | 90.5% ± 2.6% | 23.00 ± 6.44 | 195/208 | 2.22 |
-| 1D-CNN (small NN) | 91.8% ± 6.8% | 93.1% ± 5.4% | 16.69 ± 13.05 | 191/208 | 2.22 |
-| Ensemble (mean of both) | 94.2% ± 4.7% | 95.3% ± 3.3% | 11.28 ± 7.94 | 196/208 | 2.22 |
+| LightGBM (classic) | 94.7% ± 4.0% | 90.5% ± 2.0% | 23.00 ± 4.94 | 197/208 | 2.22 |
+| 1D-CNN (small NN) | 91.8% ± 6.0% | 92.4% ± 4.5% | 18.49 ± 10.98 | 191/208 | 2.22 |
+| Ensemble (mean of both) | 93.8% ± 4.5% | 94.8% ± 3.0% | 12.63 ± 7.42 | 195/208 | 2.22 |
 
 Subgroups (same thresholds):
 
@@ -83,26 +83,26 @@ Subgroups (same thresholds):
 |---|---|---|---|---|
 | Threshold only (baseline) | umafall | 95.7% | 68.4% | 101.52 |
 | Threshold only (baseline) | elderly_60plus | n/a (no falls) | 75.7% | 59.12 |
-| LightGBM (classic) | umafall | 93.8% | 90.5% | 23.01 |
+| LightGBM (classic) | umafall | 94.7% | 90.5% | 23.01 |
 | LightGBM (classic) | elderly_60plus | n/a (no falls) | 81.1% | 45.98 |
-| 1D-CNN (small NN) | umafall | 91.8% | 93.1% | 16.70 |
-| 1D-CNN (small NN) | elderly_60plus | n/a (no falls) | 89.2% | 26.28 |
-| Ensemble (mean of both) | umafall | 94.2% | 95.3% | 11.28 |
+| 1D-CNN (small NN) | umafall | 91.8% | 92.4% | 18.50 |
+| 1D-CNN (small NN) | elderly_60plus | n/a (no falls) | 83.8% | 39.42 |
+| Ensemble (mean of both) | umafall | 93.8% | 94.8% | 12.63 |
 | Ensemble (mean of both) | elderly_60plus | n/a (no falls) | 83.8% | 39.42 |
 
 False alarms by ADL activity (count over all held-out subjects):
 
 | Activity | Threshold only (baseline) | LightGBM (classic) | 1D-CNN (small NN) | Ensemble (mean of both) |
 |---|---|---|---|---|
-| Hopping | 84 | 1 | 3 | 0 |
-| Jogging | 50 | 2 | 0 | 0 |
-| Aplausing | 43 | 27 | 10 | 10 |
-| LyingDown_OnABed | 18 | 8 | 13 | 6 |
-| HandsUp | 11 | 7 | 8 | 6 |
-| Walking | 6 | 2 | 1 | 1 |
+| Hopping | 84 | 2 | 2 | 0 |
+| Jogging | 50 | 1 | 0 | 0 |
+| Aplausing | 43 | 27 | 11 | 12 |
+| LyingDown_OnABed | 18 | 10 | 15 | 8 |
+| HandsUp | 11 | 7 | 9 | 6 |
+| Walking | 6 | 1 | 1 | 0 |
 | GoDownstairs | 5 | 0 | 0 | 0 |
 | Sitting_GettingUpOnAChair | 4 | 2 | 1 | 1 |
-| OpeningDoor | 3 | 2 | 1 | 1 |
-| GoUpstairs | 1 | 0 | 0 | 0 |
+| OpeningDoor | 3 | 1 | 1 | 1 |
+| GoUpstairs | 1 | 0 | 1 | 0 |
 | Bending | 0 | 0 | 0 | 0 |
 | MakingACall | 0 | 0 | 0 | 0 |

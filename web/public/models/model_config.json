@@ -5,6 +5,11 @@
   "win": 80,
   "peak_half_width": 10,
   "refractory_s": 10.0,
+  "fusion": {
+    "rule": "logodds",
+    "match_s": 1.5,
+    "logodds_clip": 3.0
+  },
   "feature_names": [
     "peak_mag",
     "pre_min_mag",
@@ -47,7 +52,7 @@
       "cnn_params": 6225,
       "onnx_parity": {
         "lightgbm_max_abs_diff": 8.591450750827789e-08,
-        "cnn_max_abs_diff": 1.5273690223693848e-07
+        "cnn_max_abs_diff": 4.76837158203125e-07
       },
       "cv_metrics": {
         "sensitivity": 0.9487,
@@ -67,7 +72,7 @@
     },
     "wrist": {
       "trigger_g": 2.4,
-      "threshold": 0.41,
+      "threshold": 0.39,
       "models": {
         "lightgbm": "wrist_lightgbm.onnx",
         "cnn": "wrist_cnn.onnx"
@@ -82,9 +87,9 @@
         "cnn_max_abs_diff": 8.046627044677734e-07
       },
       "cv_metrics": {
-        "sensitivity": 0.9423,
-        "specificity": 0.9535,
-        "false_alarms_per_hour": 11.276
+        "sensitivity": 0.9375,
+        "specificity": 0.948,
+        "false_alarms_per_hour": 12.63
       },
       "top_features": {
         "post_still_frac": 0.35808794169296365,

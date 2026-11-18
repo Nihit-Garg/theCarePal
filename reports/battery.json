@@ -2,30 +2,30 @@
   "phone": {
     "candidates_per_hour_lab": 620.0,
     "candidates_per_day_assumed": 2480,
-    "inference_ms_this_machine": 0.178,
-    "inference_ms_device_est": 1.42,
+    "inference_ms_this_machine": 0.144,
+    "inference_ms_device_est": 1.15,
     "joules_per_day": {
       "accelerometer": 25.92,
       "batched wake-ups": 86.4,
       "stage-1 trigger": 0.09,
-      "stage-2 inference": 3.53
+      "stage-2 inference": 2.86
     },
-    "total_pct_battery_per_day": 0.19
+    "total_pct_battery_per_day": 0.18
   },
   "wrist": {
     "candidates_per_hour_lab": 499.0,
     "candidates_per_day_assumed": 1996,
-    "inference_ms_this_machine": 0.137,
-    "inference_ms_device_est": 2.73,
+    "inference_ms_this_machine": 0.164,
+    "inference_ms_device_est": 3.28,
     "joules_per_day": {
       "accelerometer": 8.64,
       "batched wake-ups": 17.28,
       "stage-1 trigger": 0.01,
-      "stage-2 inference": 0.82,
-      "heart-rate bursts (60 s, only if score >= half threshold)": 15.92
+      "stage-2 inference": 0.98,
+      "heart-rate bursts (60 s, only if score >= half threshold)": 15.27
     },
-    "total_pct_battery_per_day": 1.03,
-    "hr_bursts_per_hour_lab": 44.2,
+    "total_pct_battery_per_day": 1.01,
+    "hr_bursts_per_hour_lab": 42.4,
     "alternatives_pct_per_day": {
       "heart-rate burst after every stage-1 candidate (naive)": 4.3,
       "continuous heart rate instead of bursts": 3.1,

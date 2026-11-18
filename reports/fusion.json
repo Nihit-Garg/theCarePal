@@ -1,39 +1,39 @@
 {
   "thresholds": {
     "phone": 0.93,
-    "wrist": 0.41
+    "wrist": 0.39
   },
   "phone_only": {
     "sensitivity": 0.9712,
-    "specificity": 0.9963,
-    "false_alarms_per_hour": 0.902,
+    "specificity": 0.9944,
+    "false_alarms_per_hour": 1.354,
     "tp": 202,
     "fn": 6,
-    "tn": 536,
-    "fp_trials": 2,
-    "false_alarms": 2,
+    "tn": 535,
+    "fp_trials": 3,
+    "false_alarms": 3,
     "adl_hours": 2.216
   },
   "wrist_only": {
-    "sensitivity": 0.9567,
-    "specificity": 0.9331,
-    "false_alarms_per_hour": 16.244,
-    "tp": 199,
-    "fn": 9,
-    "tn": 502,
-    "fp_trials": 36,
-    "false_alarms": 36,
+    "sensitivity": 0.9519,
+    "specificity": 0.9257,
+    "false_alarms_per_hour": 18.049,
+    "tp": 198,
+    "fn": 10,
+    "tn": 498,
+    "fp_trials": 40,
+    "false_alarms": 40,
     "adl_hours": 2.216
   },
   "fused_or": {
-    "sensitivity": 0.9952,
-    "specificity": 0.9312,
-    "false_alarms_per_hour": 16.695,
-    "tp": 207,
-    "fn": 1,
-    "tn": 501,
-    "fp_trials": 37,
-    "false_alarms": 37,
+    "sensitivity": 0.9904,
+    "specificity": 0.9219,
+    "false_alarms_per_hour": 18.951,
+    "tp": 206,
+    "fn": 2,
+    "tn": 496,
+    "fp_trials": 42,
+    "false_alarms": 42,
     "adl_hours": 2.216
   },
   "fused_and": {
@@ -48,14 +48,37 @@
     "adl_hours": 2.216
   },
   "fused_mean": {
-    "sensitivity": 0.9567,
+    "sensitivity": 0.9663,
     "specificity": 0.9981,
     "false_alarms_per_hour": 0.451,
-    "tp": 199,
-    "fn": 9,
+    "tp": 201,
+    "fn": 7,
     "tn": 537,
     "fp_trials": 1,
     "false_alarms": 1,
     "adl_hours": 2.216
+  },
+  "fused_logodds": {
+    "sensitivity": 0.9856,
+    "specificity": 0.9981,
+    "false_alarms_per_hour": 0.451,
+    "tp": 205,
+    "fn": 3,
+    "tn": 537,
+    "fp_trials": 1,
+    "false_alarms": 1,
+    "adl_hours": 2.216
+  },
+  "clip_sensitivity_check": {
+    "logodds_clip_2": {
+      "sensitivity": 0.9904,
+      "specificity": 0.9981,
+      "false_alarms_per_hour": 0.451
+    },
+    "logodds_clip_4": {
+      "sensitivity": 0.9808,
+      "specificity": 1.0,
+      "false_alarms_per_hour": 0.0
+    }
   }
 }

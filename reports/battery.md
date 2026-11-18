@@ -2,32 +2,32 @@
 
 Analytical estimate, not a measurement on hardware. Assumptions are at the top of `ml/scripts/battery_estimate.py`; candidate rates and inference time are measured.
 
-## Phone: ~0.19% of battery per day
+## Phone: ~0.18% of battery per day
 
 * Stage 1 fires 620.0/h on lab ADL clips; assuming real days are 25% as busy over 16 waking hours ≈ 2480 stage-2 runs/day.
-* Stage 2 (features + LightGBM + CNN) takes 0.178 ms here, ~1.42 ms estimated on the device.
+* Stage 2 (features + LightGBM + CNN) takes 0.144 ms here, ~1.15 ms estimated on the device.
 
 | Component | Joules/day |
 |---|---|
 | accelerometer | 25.92 |
 | batched wake-ups | 86.4 |
 | stage-1 trigger | 0.09 |
-| stage-2 inference | 3.53 |
+| stage-2 inference | 2.86 |
 
-## Wearable (wrist): ~1.03% of battery per day
+## Wearable (wrist): ~1.01% of battery per day
 
 * Stage 1 fires 499.0/h on lab ADL clips; assuming real days are 25% as busy over 16 waking hours ≈ 1996 stage-2 runs/day.
-* Stage 2 (features + LightGBM + CNN) takes 0.137 ms here, ~2.73 ms estimated on the device.
+* Stage 2 (features + LightGBM + CNN) takes 0.164 ms here, ~3.28 ms estimated on the device.
 
 | Component | Joules/day |
 |---|---|
 | accelerometer | 8.64 |
 | batched wake-ups | 17.28 |
 | stage-1 trigger | 0.01 |
-| stage-2 inference | 0.82 |
-| heart-rate bursts (60 s, only if score >= half threshold) | 15.92 |
+| stage-2 inference | 0.98 |
+| heart-rate bursts (60 s, only if score >= half threshold) | 15.27 |
 
-* Heart-rate bursts: stage 2 scores >= 50% of the alarm threshold 44.2/h on held-out lab ADL. The pre-impact baseline comes from the watch's own periodic background heart-rate readings.
+* Heart-rate bursts: stage 2 scores >= 50% of the alarm threshold 42.4/h on held-out lab ADL. The pre-impact baseline comes from the watch's own periodic background heart-rate readings.
 
 Design choices this avoids (% battery/day on their own):
 
