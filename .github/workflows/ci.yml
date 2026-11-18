@@ -14,12 +14,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      # The unit tests only need the signal pipeline, so skip the heavy ML deps (torch etc.)
-      - run: pip install numpy pandas pytest ruff && pip install -e ml --no-deps
+      # The tests need the signal pipeline + ONNX Runtime (to run the shipped models),
+      # not the training stack, so skip the heavy deps (torch, lightgbm…)
+      - run: pip install numpy pandas onnxruntime matplotlib pytest ruff && pip install -e ml --no-deps
       - run: ruff check ml
         working-directory: .
       - run: pytest -q
         working-directory: ml
+      - name: Docs numbers match reports/*.json
+        run: python ml/scripts/update_docs.py && git diff --exit-code -- README.md docs/
 
   web:
     name: Web — lint, parity tests, build, end-to-end smoke test

@@ -3,7 +3,17 @@
 TheCarePal AI/ML internship assignment **AI-03**. A device-agnostic fall detector
 that works with whatever the person has: a phone, a smartwatch or band, or both.
 It runs entirely on the device and raises an alert with a 30-second "I'm OK" countdown
-before a caregiver is notified.
+before a caregiver is notified. A **caregiver screen** then tracks each incident from
+"needs attention" to "resolved".
+
+**What's in it**
+* On-device ML (LightGBM + 1D-CNN ensemble) for **phone** and **wrist**, cross-validated on people it never saw
+* Wearable/phone **fallback and fusion**, with the active device always shown
+* An alert designed for older people: a big countdown, alarm tone, vibration, and a spoken prompt in **English or Hindi**
+* A **caregiver / ops screen**: live incidents, "I'm on it", resolve as real fall or false alarm, stats, CSV export.
+  It syncs across browser tabs out of the box, and across phones with Firebase
+* A **recorder** + `eval_recording.py` to measure false alarms on your own real-life recordings
+* An installable PWA that works offline; parity tests prove the browser matches the Python pipeline alarm-for-alarm
 
 > **Not a medical device.** This tool supports nurses and families. It does not
 > diagnose anything or replace medical judgement, and every alert says so.
@@ -13,6 +23,8 @@ before a caregiver is notified.
 **Live demo:** https://nihit-garg.github.io/theCarePal/ (works on a phone) · **Video:** _<add your video link>_
 
 New here? Read [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md), a guided tour of the code and every design decision.
+More docs: [`MODEL_CARD`](docs/MODEL_CARD.md) · [real-world testing](docs/REAL_WORLD_TEST.md) ·
+[connecting real devices](docs/real-devices.md) · [Firebase setup](docs/FIREBASE.md) · [video script](docs/VIDEO_SCRIPT.md)
 
 ![Sensitivity vs false alarms](reports/figures/sensitivity_vs_false_alarms.png)
 
@@ -27,36 +39,36 @@ Subject-wise nested 5-fold cross-validation: every number is on people the model
 | Model | Sensitivity | Specificity | False alarms / hour | Falls caught |
 |---|---|---|---|---|
 | Threshold only (baseline) | 94.9% ± 0.5% | 65.0% ± 2.7% | 118.69 | 1903/2006 |
-| LightGBM (classic) | 94.7% ± 2.6% | 99.6% ± 0.3% | 0.78 | 1899/2006 |
-| 1D-CNN (small NN) | 95.6% ± 2.4% | 99.9% ± 0.1% | 0.30 | 1917/2006 |
-| **Ensemble (shipped)** | 94.9% ± 2.9% | 100.0% ± 0.0% | 0.00 | 1903/2006 |
+| LightGBM (classic) | 95.0% ± 2.6% | 99.6% ± 0.3% | 0.78 | 1905/2006 |
+| 1D-CNN (small NN) | 95.7% ± 2.6% | 99.9% ± 0.1% | 0.30 | 1919/2006 |
+| **Ensemble (shipped)** | 94.9% ± 3.0% | 100.0% ± 0.0% | 0.00 | 1903/2006 |
 
 **Wearable (wrist)**: 19 people (UMAFall), 208 falls, 2.2 h of daily activity
 
 | Model | Sensitivity | Specificity | False alarms / hour | Falls caught |
 |---|---|---|---|---|
 | Threshold only (baseline) | 95.7% ± 3.4% | 68.4% ± 5.1% | 101.49 | 199/208 |
-| LightGBM (classic) | 93.8% ± 4.9% | 90.5% ± 2.6% | 23.00 | 195/208 |
-| 1D-CNN (small NN) | 91.8% ± 6.8% | 93.1% ± 5.4% | 16.69 | 191/208 |
-| **Ensemble (shipped)** | 94.2% ± 4.7% | 95.3% ± 3.3% | 11.28 | 196/208 |
+| LightGBM (classic) | 94.7% ± 4.0% | 90.5% ± 2.0% | 23.00 | 197/208 |
+| 1D-CNN (small NN) | 91.8% ± 6.0% | 92.4% ± 4.5% | 18.49 | 191/208 |
+| **Ensemble (shipped)** | 93.8% ± 4.5% | 94.8% ± 3.0% | 12.63 | 195/208 |
 
-**Both devices** (UMAFall's simultaneous phone + wrist recordings, held-out people):
+**Both devices** (UMAFall's simultaneous phone + wrist recordings, held-out people; thresholds are the shipped ones, so read this as a comparison of rules):
 
-| Strategy | Sensitivity | Specificity | False alarms / hour |
-|---|---|---|---|
-| Phone only | 97.1% | 99.6% | 0.90 |
-| Wrist only | 95.7% | 93.3% | 16.24 |
-| Either device (OR) | 99.5% | 93.1% | 16.70 |
-| Both devices (AND) | 92.8% | 100.0% | 0.00 |
-| **Mean of normalised scores (shipped)** | 95.7% | 99.8% | 0.45 |
+| Strategy | Sensitivity | Specificity | False alarms / hour | Falls caught |
+|---|---|---|---|---|
+| Phone only | 97.1% | 99.4% | 1.35 | 202/208 |
+| Wrist only | 95.2% | 92.6% | 18.05 | 198/208 |
+| Either device (OR) | 99.0% | 92.2% | 18.95 | 206/208 |
+| Both devices (AND) | 92.8% | 100.0% | 0.00 | 193/208 |
+| Mean of p/threshold (first version) | 96.6% | 99.8% | 0.45 | 201/208 |
+| **Log-odds margins (shipped)** | 98.6% | 99.8% | 0.45 | 205/208 |
 
 What this says:
-* The ML is what makes this usable: a plain impact threshold catches the same falls but fires **~100+ times per hour** on normal activity.
-* The **ensemble has the fewest false alarms on both devices at comparable sensitivity**; the CNN and LightGBM make different mistakes. (On the phone, the CNN alone catches slightly more falls, 95.6% vs 94.9%, but with false alarms.)
-* **The wrist is harder** (11/h): its remaining false alarms are mostly clapping, raising hands and lying down on a bed. Fusing it with a phone cuts that to 0.45/h at the same sensitivity.
-* ⚠️ Only one person over 60 performed falls in these datasets (SisFall SE06), and the phone model caught 73% of their falls. Older people's falls may look different from young volunteers' simulated ones. This is the biggest open risk (see *Limitations*).
-* **Battery** (estimate): ~0.19% per day on a phone, ~1.03% on a watch. Models are 231 KB, and inference takes ~0.15 ms on a laptop.
-* **End-to-end test** (`npm run smoke`, headless Chrome at phone size): 6/6 held-out fall replays raise the alert, 0/11 everyday-activity replays do, and fallback switches correctly.
+* The ML is what makes this usable: a plain impact threshold catches a similar share of falls but fires **119/h (phone) and 101/h (wrist)** on normal activity.
+* **The wrist is harder** (12.6 false alarms/h). Its most common false alarms: clapping (12), lying down on a bed (8), raising hands (6).
+* **Fusion:** with a phone on the person, the shipped log-odds rule catches 98.6% of falls at 0.45 false alarms/h (wrist alone in the same evaluation: 95.2% at 18.05/h). The first rule (mean of p/threshold) reached only 96.6%: the phone could never trigger on its own.
+* ⚠️ Only one person over 60 performed falls in these datasets (SisFall SE06); the phone model caught 72.0% of their falls. Older people's falls may look different, which is the biggest open risk (see *Limitations* and the [model card](docs/MODEL_CARD.md)).
+* **Battery** (estimate): ~0.18% per day on a phone, ~1.01% on a watch. Models: 231 KB (phone), 205 KB (wrist); stage 2 takes ~0.15 ms on a laptop CPU.
 <!-- RESULTS:END -->
 
 Full tables, including fold-to-fold spread, elderly subgroup and false alarms by
@@ -66,10 +78,10 @@ activity: [`reports/metrics.md`](reports/metrics.md) · fusion: [`reports/fusion
 ## How it works
 
 ```
- any device ──► BinResampler ──► Stage 1: trigger ──► Stage 2: classifier ──► Fusion & ──► 30 s countdown ──► caregiver
- (phone, watch,   (any rate →     |a| ≥ T g and local   4 s window around     fallback      "I'm OK" cancels    webhook
-  band, sim)       20 Hz)          max (always on,       the peak: LightGBM    (which device
-                                   ~free)                + 1D-CNN ensemble     to trust)
+ any device ──► BinResampler ──► Stage 1: trigger ──► Stage 2: classifier ──► Fusion & ──► 30 s countdown ──► incident ──► caregiver
+ (phone, watch,   (any rate →     |a| ≥ T g and local   4 s window around     fallback      tone + voice,       store        screen
+  band, sim)       20 Hz)          max (always on,       the peak: LightGBM    (which device "I'm OK" cancels  (tabs or     (ack, resolve,
+                                   ~free)                + 1D-CNN ensemble     to trust)                        Firebase)     stats)
 ```
 
 1. **Harmonise.** Every source is bin-averaged into 20 Hz samples in g. 20 Hz is the
@@ -92,16 +104,24 @@ activity: [`reports/metrics.md`](reports/metrics.md) · fusion: [`reports/fusion
    with at most one alarm per 10 s.
 5. **Fusion and fallback** (`web/src/engine/fusion.js`):
    * wearable connected, worn and streaming, plus a phone on the person → **fused**: each
-     device's score is divided by its own threshold, and the alarm fires if the average is ≥ 1
+     device contributes its evidence margin over its own threshold, `logit(p) − logit(threshold)`
+     clipped to ±3, and the alarm fires if the sum is ≥ 0. A confident device can outvote a hesitant
+     one. (An earlier version averaged `p / threshold`; an audit showed the phone could then never
+     trigger on its own, so it was replaced and re-evaluated. See *Results*.)
    * wearable only → wearable model
-   * otherwise the phone → phone model (with a warning if it looks like it was left on a table)
+   * otherwise the phone → phone model. If the engine detects the phone has been still and flat
+     for 30 s, it warns that the phone is probably on a table, not on the person
    * nothing → the UI says plainly that falls can't be detected right now
 6. **Alert.** A full-screen alert shows a 30 s countdown, a large "I'm OK" button, and
    which device(s) detected the fall and how confident they were. If a wearable is worn,
    it also shows the **heart-rate change since the impact**. That is a supporting signal,
    never a gate: beta-blockers, which many older adults take, blunt the rise. If nobody
-   cancels, or they press "Get help now", the caregiver message is sent (to a webhook if
-   one is configured; otherwise it is shown).
+   cancels, or they press "Get help now", the incident is **escalated**. Tone, vibration and a spoken
+   prompt (English or Hindi) make the countdown hard to miss.
+7. **Caregiver.** Escalated incidents appear live on the Caregiver screen (another tab, or another
+   phone with Firebase). A nurse taps **"I'm on it"**, and the person's screen shows who is coming.
+   Then they resolve it as *real fall / false alarm / unsure*. Those outcomes are labelled data for
+   tuning, and they feed the ops stats (confirmed falls, false alarms, median time to respond).
 
 ### Key design decisions
 
@@ -109,14 +129,16 @@ activity: [`reports/metrics.md`](reports/metrics.md) · fusion: [`reports/fusion
 |---|---|
 | **Device-agnostic, accelerometer-only** | Every phone and band has an accelerometer; many bands have no gyroscope. One code path covers Android, iPhone, Wear OS, Apple Watch and BLE bands. |
 | **Orientation-invariant inputs** | The phone can be any way up in a pocket and the band strapped either way. The models never see raw x/y/z, so axis conventions don't matter. |
-| **Two-stage detector** | Stage 1 rejects >99% of samples for free, so the ML runs only a few times per hour, which keeps the battery cost negligible. |
+| **Two-stage detector** | Stage 1 rejects the vast majority of samples for free, so the ML runs on the order of 100 times per hour of activity at ~1 ms each, which keeps the battery cost negligible (`reports/battery.md`). |
 | **Wait 2.5 s after impact** | "Fell and stayed down" is what separates a fall from sitting down hard. The latency is still a few seconds. |
 | **Subject-wise nested CV** | Random window splits put the same person in train and test and inflate results. Here thresholds are chosen on training people only, and test people are never seen. |
-| **Event-level metrics on full streams** | Sensitivity, specificity and false alarms per hour come from running the real streaming detector over whole recordings, exactly as the product would. |
+| **Event-level metrics on full streams** | Sensitivity, specificity and false alarms per hour come from running the detector over whole recordings with the same streaming rules as the product (a peak is only judged once 2.5 s of data after it exist). |
 | **Sensitivity-first threshold (≥95% target)** | A false alarm costs one tap on "I'm OK"; a missed fall can mean a long time on the floor. The countdown is what makes a high-sensitivity operating point acceptable. |
 | **Wrist as the wearable position** | It's where watches and bands are worn, and it's the hardest position (arms move a lot). We don't hide that: the wrist numbers are worse than the phone's. |
 | **Runs in the browser (ONNX Runtime Web)** | No server, no cost, and no sensor data leaves the device. The same `.onnx` files run on Android, iOS and Wear OS through ONNX Runtime Mobile. |
-| **Python and JS parity tests** | The browser re-implements the feature pipeline, so `npm test` checks it against golden vectors exported from Python (resampling, channels, features, ONNX outputs, streaming peaks). |
+| **Python and JS parity tests** | The browser re-implements the pipeline, so `npm test` checks it against golden vectors exported from Python: resampling, channels, features, ONNX outputs, and the **exact alarms** the full engine raises, single-device and fused. |
+| **Incidents as pure state transitions** | `countdown → cancelled / escalated → acknowledged → resolved`, as pure functions, so the same logic works with localStorage or Firestore and is unit-tested. Outcomes become labelled data. |
+| **Caregiver sync without an account by default** | Two tabs of one browser sync instantly (BroadcastChannel), so anyone can try the full flow; Firebase is one `.env` away (`docs/FIREBASE.md`). |
 
 ## Data
 
@@ -146,6 +168,7 @@ bash ml/scripts/download_data.sh
 # 4. Train the final models, export ONNX + demo replays + parity vectors → web/public, web/src/engine
 .venv/bin/python ml/scripts/export_models.py
 .venv/bin/python ml/scripts/battery_estimate.py
+.venv/bin/python ml/scripts/update_docs.py    # refresh every number in README / docs from reports/
 
 # 5. Web demo
 cd web && npm install && npm test && npm run dev
@@ -160,8 +183,9 @@ To try the real phone sensor, open the dev server's network URL on your phone (i
 needs HTTPS for motion sensors, so use the deployed version or a tunnel) and pick
 **Phone → This phone**.
 
-Optional: copy `web/.env.example` to `web/.env` and set `VITE_ALERT_WEBHOOK_URL` to POST
-alerts (for example to a Firebase Cloud Function that notifies the nurse app).
+Optional (`web/.env.example`): Firebase settings to share incidents across phones
+([`docs/FIREBASE.md`](docs/FIREBASE.md)), and `VITE_ALERT_WEBHOOK_URL` to also POST each
+escalation to another system.
 
 ### Using the demo
 * **Devices:** connect or disconnect the wearable, take it off, switch the phone between
@@ -170,23 +194,32 @@ alerts (for example to a Firebase Cloud Function that notifies the nurse app).
 * **Scenarios:** the stream plays a "normal day" of everyday activities. Tap a fall to
   inject it. Tap "Lying down on a bed" or "Clapping" to see the hard cases the model
   has to reject.
-* The chart shows |a| for each device, with each stage-2 score next to its peak.
+* The chart shows |a| for each device, with each stage-2 score next to its peak. Each device card
+  says exactly where its data comes from (for example "Replay · UMAFall subject 06 · Forward fall").
+* **Caregiver flow:** use **Side by side** (wide screens), or open **Caregiver in new tab**. Play a fall,
+  press **Get help now**, then **I'm on it** and **Real fall** on the caregiver side.
+* **Alert settings:** English / हिन्दी, alarm sound, spoken prompt.
+* **Record data for real-world testing:** see [`docs/REAL_WORLD_TEST.md`](docs/REAL_WORLD_TEST.md).
 
 ## Repository layout
 
 ```
-ml/fallguard/        datasets.py  signal.py  detector.py  models.py  evaluate.py  fusion.py
+ml/fallguard/        datasets.py  signal.py  detector.py  models.py  evaluate.py  fusion.py  onnx_model.py
 ml/scripts/          download_data.sh  prepare_data.py  train_eval.py  eval_fusion.py
-                     export_models.py  battery_estimate.py
-web/src/engine/      resample.js  signal.js  detector.js  model.js  fusion.js  engine.js
-                     sim.js  livePhone.js  notify.js  parity.test.js
-web/src/components/  SignalChart.jsx  AlertOverlay.jsx
-web/public/models/   *.onnx  model_config.json
-web/public/replays/  synchronised phone + wrist recordings of the held-out demo subjects
+                     export_models.py  battery_estimate.py  eval_recording.py
+ml/tests/            unit tests (incl. random-rotation invariance) + eval_recording end to end
+web/src/engine/      resample.js signal.js detector.js model.js fusion.js engine.js   ← detection
+                     sim.js livePhone.js recorder.js alertFx.js wakeLock.js notify.js
+                     parity.test.js engine.test.js
+web/src/incidents/   model.js (lifecycle) localStore.js firebaseStore.js index.js model.test.js
+web/src/views/       PersonView.jsx  CaregiverView.jsx        web/src/App.jsx (router)
+web/src/components/  AlertOverlay.jsx  SignalChart.jsx  RecorderPanel.jsx
+web/public/          models/ (*.onnx, model_config.json) · replays/ · sw.js · manifest · icons/
+web/scripts/         smoke.mjs (headless-Chrome end-to-end test)
 reports/             metrics.md  fusion.md  battery.md  figures/
-ml/tests/           unit tests (incl. random-rotation orientation-invariance test)
-.github/workflows/   ci.yml (lint, tests, parity, build, headless smoke) · pages.yml (deploy demo)
-docs/WALKTHROUGH.md  guided tour of the code · docs/VIDEO_SCRIPT.md · docs/real-devices.md
+docs/                WALKTHROUGH · MODEL_CARD · REAL_WORLD_TEST · real-devices · FIREBASE · VIDEO_SCRIPT
+firestore.rules      security rules for the shared incident store
+.github/workflows/   ci.yml (lint, unit + parity + engine tests, build, headless smoke) · pages.yml
 ```
 
 ## Assumptions and limitations
@@ -201,8 +234,13 @@ docs/WALKTHROUGH.md  guided tour of the code · docs/VIDEO_SCRIPT.md · docs/rea
   a phone in a loose pocket moves more.
 * **Heart rate is simulated.** None of the public fall datasets record it. The
   confirmation logic (rise vs the 30 s pre-impact baseline) is real; the signal isn't.
-* **Browsers pause sensors when the screen is off**, so a production phone app must be native.
-  See `docs/real-devices.md`.
+* **Browsers pause sensors when the screen is off.** The demo keeps the screen awake (wake lock)
+  while the live sensor is used, but a production phone app must be native. See `docs/real-devices.md`.
+* **Fusion numbers are slightly optimistic**: they use the shipped thresholds, which were chosen in
+  CV folds where those UMAFall people were training data. The *comparison between rules* is the
+  point (`reports/fusion.md`).
+* **The caregiver flow is demo-level**: anonymous Firebase auth, no real accounts or push
+  notifications yet (see *What I'd build next*).
 * SisFall's original host is offline; the download script uses a public mirror of the
   unmodified release (file layout and units checked against the paper).
 
@@ -210,15 +248,17 @@ docs/WALKTHROUGH.md  guided tour of the code · docs/VIDEO_SCRIPT.md · docs/rea
 
 1. **Native apps** (Android and Wear OS first, since most of TheCarePal's families likely use
    Android) running the same ONNX models in a background service, with watch-side inference.
-2. **Firebase integration**: alert → Cloud Function → Firestore incident + FCM push to the
-   assigned nurse and family, escalating to a phone call if nobody acknowledges in N minutes.
-   Incidents show up in the ops CRM.
-3. **Learn from cancellations**: every "I'm OK" is a labelled false alarm. With consent, use
-   them to tune thresholds per person (someone with a vigorous gait gets a different
-   operating point).
-4. **Longer real-world validation**: wear-test with staff and volunteers for full days to
-   measure true false alarms per day, and evaluate on real-fall data (for example FARSEEING)
-   if access can be arranged.
+2. **Production notifications**: the incident store already supports Firestore. Next is a Cloud
+   Function on `escalated` that sends FCM pushes to the assigned nurse and family, and **escalates
+   to a phone call or SMS if nobody acknowledges** within the overdue window (the caregiver screen
+   already flags overdue incidents). Real accounts with per-care-team security rules, and incidents
+   showing in the ops CRM.
+3. **Learn from outcomes**: every "I'm OK" and every caregiver resolution is a labelled example
+   (already exported as CSV). With consent, use them to tune thresholds per person (someone with
+   a vigorous gait gets a different operating point).
+4. **Longer real-world validation**: the recorder and `eval_recording.py` are built for this. Wear-test
+   with staff and volunteers for full days to measure true false alarms per day, and evaluate on
+   real-fall data (for example FARSEEING) if access can be arranged.
 5. **Long-lie and inactivity detection**: no movement for N minutes at night when there is
    normally movement. That catches falls with soft impacts that stage 1 misses.
 6. Quantise the models (int8) and add a TFLite export for teams that standardise on it.
@@ -229,10 +269,11 @@ docs/WALKTHROUGH.md  guided tour of the code · docs/VIDEO_SCRIPT.md · docs/rea
 |---|---|
 | Datasets (UMAFall, SisFall) | free, public |
 | Python libraries (NumPy, pandas, scikit-learn, LightGBM, PyTorch, ONNX, onnxmltools) | free, open source |
-| Training | ~25 min CPU for the full evaluation, ~3 min for the final models; no GPU needed |
+| Training | ~30 min CPU for the full evaluation (CV + fusion), ~2 min for the final models; no GPU needed |
 | Inference | on the user's device (ONNX Runtime Web/Mobile, free); **no server or API cost per user** |
 | Hosting the demo | free static hosting (GitHub Pages / Vercel / Firebase Hosting) |
-| Webhook (optional) | Firebase Cloud Functions free tier covers a pilot |
+| Shared incidents (optional) | Firebase Spark (free) plan: Firestore + anonymous Auth cover a pilot |
+| Webhook (optional) | e.g. a Firebase Cloud Function (needs the pay-as-you-go plan, which has a free tier) |
 
 No paid model APIs are used.
 
@@ -240,6 +281,9 @@ No paid model APIs are used.
 
 * **Claude (Claude Code)** was my pair-programmer. I used it to discuss the approach,
   scaffold the code, write the JS port of the signal pipeline and the parity tests, and
-  draft this README. I reviewed, ran and can explain every part. The design choices (subject-wise
+  draft this README. I also ran a **separate Claude review agent** to audit the code and docs for
+  redundancy and unsupported claims. It found real issues (a crash in every training script
+  introduced by a lint fix, a lopsided fusion rule, overstated doc claims), and I fixed and
+  re-evaluated them. I reviewed, ran and can explain every part. The design choices (subject-wise
   nested CV, event-level metrics, orientation-invariant channels, two-stage detection,
   sensitivity-first operating point, data-driven fusion rule) are explained above and in the video.

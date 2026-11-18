@@ -1,6 +1,6 @@
 # Code walkthrough: read this first
 
-A guided tour of the codebase. Read it top to bottom once (~20 min), and you'll be able
+A guided tour of the codebase. Read it top to bottom once (~25 min), and you'll be able
 to explain every part in the video and change anything confidently.
 
 ---
@@ -23,15 +23,17 @@ raw dataset files ──► datasets.py ──► Recording (N×3 array in g, 20
            training (Python)                                              ▼
   evaluate.training_windows ──► 4 s windows around peaks ──► models.py (LightGBM + CNN)
            │                                                         │
-           └── train_eval.py: subject-wise nested CV ──► reports/    └─► export_models.py ──► .onnx
+           └── train_eval.py: subject-wise nested CV ──► reports/    └─► export_models.py ──► .onnx + model_config.json
                                                                                         │
            demo (browser)                                                               ▼
   sim.js / livePhone.js ──► engine.js ──► detector.js (stage 1) ──► model.js (stage 2, ONNX) ──►
-           fusion.js (which device to trust) ──► App.jsx (alert + 30 s countdown) ──► notify.js
+     fusion.js (which device to trust) ──► PersonView (alert + 30 s countdown) ──► incident store ──► CaregiverView
 ```
 
-The Python side and the browser side implement **the same pipeline**, and
-`web/src/engine/parity.test.js` checks that they agree to 4 decimal places.
+The Python side and the browser side implement **the same pipeline**. Parity tests check
+that the browser reproduces Python on golden vectors: resampling to 1e-5, channels to
+1e-4, features to a relative 1e-3, model probabilities to 1e-3. **Candidate peaks and
+alarms must match exactly**, for single devices and for fused phone + wrist.
 
 ## 3. Python, file by file (`ml/fallguard/`)
 
@@ -41,8 +43,8 @@ The Python side and the browser side implement **the same pipeline**, and
 * `PEAK_HALF_WIDTH = 10`: a candidate peak must be the largest within ±0.5 s.
 * `REFRACTORY_S = 10`: at most one alarm per 10 s (one fall gives several peaks).
 
-If you change one of these, change `model_config.json` too by re-running `export_models.py`.
-The browser reads its constants from that file.
+The browser reads these from `web/public/models/model_config.json`, which
+`export_models.py` writes, so re-export after changing anything.
 
 ### `datasets.py`: loading and harmonising
 * `bin_resample()`: groups samples into 50 ms bins and averages each bin. This turns any rate
@@ -54,6 +56,8 @@ The browser reads its constants from that file.
   for the fusion evaluation and the demo replays.
 * `load_sisfall()`: one waist device at 200 Hz. The raw ADXL345 counts are converted to g
   (`× 32 / 8192`). File names encode the activity: `F..` = fall, `D..` = daily activity, `SE..` = elderly subject.
+* `save_recordings()` / `load_recordings()`: the cache in `data/processed/recordings.pkl`.
+  Every script loads data through this one function.
 
 ### `signal.py`: the core idea (orientation invariance)
 The phone can be upside down in a pocket and the watch can be on either wrist, so raw x/y/z
@@ -77,49 +81,59 @@ posture change (`tilt_change_deg`), jerk, energy, and so on. They are listed in 
 `find_candidate_peaks()` is **stage 1**: |a| ≥ trigger, and it's the local maximum.
 
 ### `detector.py`: the two-stage detector
-* `score_recording()`: stage 1 finds peaks, then each 4 s window is scored by the model.
+* `score_recording()`: stage 1 finds peaks, then each 4 s window is scored by the model. Like the
+  streaming product, it **only judges a peak once 2.5 s of data after it exists**.
 * `alarms_from_candidates()`: keeps peaks with probability ≥ threshold, and drops any within 10 s of the previous alarm.
 
 ### `models.py`: the two classifiers (plus their ensemble)
 * `ClassicModel`: LightGBM (200 small trees, `class_weight="balanced"`), trained on the features.
 * `FallCNN`: three Conv1d blocks → global average pool → one logit. **6,225 parameters**, 27 KB as ONNX.
   The input scaling sits inside the network, so the exported ONNX takes raw channels.
-  Training augments with ±15% gain (different sensors) and small noise.
+  It trains for a fixed 30 epochs with a cosine learning rate and augments with ±15% gain
+  (different sensors) and small noise.
 * `EnsembleModel`: the average of the two probabilities. **This is what ships.**
 * Note `torch.set_num_threads(1)` at the top: on macOS, PyTorch and LightGBM ship different
-  OpenMP libraries and crash if both run multi-threaded. It took a segfault to find this.
+  OpenMP libraries and crash if both run multi-threaded.
 
 ### `evaluate.py`: honest evaluation
 * `training_windows()`: **positives** are the impact of each fall (±2 samples of jitter =
-  5 windows per fall). **Negatives** are every stage-1 peak in daily activities, plus peaks
-  more than 3 s from the impact inside fall recordings (walking before the fall).
-* `choose_trigger()`: the 1st percentile of training fall peaks, so ~99% of falls pass stage 1.
+  5 windows per fall). **Negatives** are every peak above **0.9 × the trigger** in daily
+  activities (slightly more than stage 1 would pass, so the model also sees near-misses),
+  plus such peaks more than 3 s from the impact inside fall recordings (walking before the fall).
+* `choose_trigger()`: the 1st percentile of training fall peaks, rounded down to 0.05 g, so ~99% of falls pass stage 1.
 * `choose_threshold()`: the **highest** threshold that still catches ≥95% of falls. Why
   sensitivity-first? A false alarm costs one tap on "I'm OK". A missed fall can mean an
   older person on the floor for hours.
-* `event_counts()`: metrics are counted **per recording, by streaming it through the
-  detector**, not per window:
+* `event_counts()` / `counts_from_alarms()`: metrics are counted **per recording, from the alarms
+  the detector raises over the whole stream**, not per window. The same function scores single
+  devices and fused ones:
   * fall recording → detected if an alarm fires within ±3 s of the impact
   * daily-activity recording → every alarm is a false alarm; FA/hour = alarms ÷ hours of activity
 * `subject_folds()`: splits **people**, not windows.
 
 ### `fusion.py`: two devices at once
-A candidate from either device is matched with the other device's best score within ±1.5 s.
-Scores are normalised by each device's own threshold (`s = p / threshold`, so s ≥ 1 means
-"this device alone would alarm"). The rules compared were OR, AND and MEAN; **MEAN ships**: alarm if
-`(s_phone + s_wrist) / 2 ≥ 1`. A confident device can carry a hesitant one, but one
-device's spike alone isn't enough.
+A candidate from either device is matched with the other device's best probability within ±1.5 s.
+Each device then contributes its **evidence margin over its own threshold**:
+`m = logit(p) − logit(threshold)`, clipped to ±3. The alarm fires if `m_phone + m_wrist ≥ 0`.
+A device with no candidate near that moment counts as −3.
+
+*Why not simply average `p / threshold`?* That was the first version, and the code audit caught
+the flaw: with thresholds 0.93 (phone) and 0.41 (wrist), the phone's score can never exceed
+1/0.93 ≈ 1.08, so it could **never** carry a decision on its own. Log-odds margins are symmetric.
+The clip (3) was fixed before looking at results; `reports/fusion.md` shows that clips 2 and 4
+give almost the same numbers. `onnx_model.py` lets Python run the exact shipped ONNX files.
 
 ## 4. Python scripts (`ml/scripts/`), in the order you run them
 
-| Script | What it does | Time |
+| Script | What it does | Time (laptop CPU) |
 |---|---|---|
 | `download_data.sh` | gets UMAFall + SisFall into `data/raw/` | ~2 min |
 | `prepare_data.py` | loads both datasets → `data/processed/recordings.pkl` | ~10 s |
-| `train_eval.py` | **nested** subject-wise CV of all models → `reports/metrics.md` + figure | ~20 min |
+| `train_eval.py` | **nested** subject-wise CV of all models → `reports/metrics.md` + figure | ~20–25 min |
 | `eval_fusion.py` | CV of the fusion rules on UMAFall's simultaneous recordings → `reports/fusion.md` | ~8 min |
-| `export_models.py` | trains the final models, exports ONNX, demo replays, golden test vectors | ~1.5 min |
+| `export_models.py` | trains the final models, exports ONNX, `model_config.json`, demo replays, golden test vectors | ~2 min |
 | `battery_estimate.py` | analytical battery model → `reports/battery.md` | ~10 s |
+| `eval_recording.py` | runs the shipped models on **your own** recording (see `docs/REAL_WORLD_TEST.md`) | seconds |
 
 **"Nested" CV, simply:** the outer loop holds out ~20% of the *people* as the test set. Inside,
 on the remaining 80%, an inner 4-fold CV produces out-of-fold scores, and those pick the
@@ -138,74 +152,115 @@ so the demo replays are people the deployed model never saw.
 | `resample.js` | streaming `BinResampler` (any rate → 20 Hz) | `datasets.bin_resample` |
 | `signal.js` | channels + 20 features | `signal.py` |
 | `detector.js` | `DeviceDetector.push(sample)` → candidate or null | `signal.find_candidate_peaks` + `extract_window` |
-| `model.js` | loads the 2 ONNX models, `predict(window)` → `{p, pLgb, pCnn}` | `models.EnsembleModel` |
-| `fusion.js` | `selectMode()` (which device to trust) + `fuseScores()` | `fusion.py` |
+| `model.js` | loads the 2 ONNX models, `predict(window)` → `{p, pLgb, pCnn}`. All inference goes through **one queue**: ONNX Runtime Web hangs on overlapping `run()` calls (the engine test caught this) | `models.EnsembleModel` |
+| `fusion.js` | `selectMode()` (which device to trust) + `fuseScores()` (log-odds rule) | `fusion.py` |
 | `engine.js` | `FallEngine`: wires it all together and raises alarms | — |
 | `sim.js` | `ScenarioPlayer` (replays recordings) + `HeartRateSim` | — |
-| `livePhone.js` | the real phone accelerometer via `DeviceMotion` | — |
-| `notify.js` | POSTs to `VITE_ALERT_WEBHOOK_URL`, or demo mode | — |
+| `livePhone.js` | the real phone accelerometer via `DeviceMotion` (+ `BinResampler`) | — |
+| `alertFx.js` | alarm tone (Web Audio), vibration, spoken prompt (Web Speech) | — |
+| `recorder.js` | `SessionRecorder`: records what the engine sees + your labels → CSV | read by `eval_recording.py` |
+| `wakeLock.js` | keeps the screen on while the live sensor is used | — |
+| `notify.js` | optional webhook POST (`VITE_ALERT_WEBHOOK_URL`) | — |
 
 **Detector streaming detail:** when sample *n* arrives, the detector checks sample
 *n − 50* (2.5 s ago). By then it knows the ±0.5 s neighbourhood (is it a local max?) and has
-the 2.5 s after it (did they stay down?). That's why alerts appear ~3–5 s after the impact.
+the 2.5 s after it (did they stay down?). So a single-device alert appears ~2.5–3 s after impact.
+In fused mode the engine also waits for the *other* device's view of the same moment (up to
+1.5 s later, plus its own 2.5 s look-ahead, plus inference), so alerts appear ~4.5–5 s after impact.
 
-**`FallEngine` in four methods:**
+**`FallEngine` in a nutshell:**
 * `setDeviceStatus(id, {connected, worn})`, `pushSample(id, [x,y,z], t)`, `pushHeartRate(t, bpm)`: the
-  *only* interface a device needs. The simulator and the real phone use exactly these.
-* `tick(now)`: picks the mode with `selectMode()`, and resolves fused decisions after waiting
-  1.5 s + 1 s so both devices have had a chance to report.
+  *only* interface a device needs. Samples must already be at 20 Hz (wrap the device's native
+  rate in `BinResampler`). The simulator and the real phone use exactly these.
+* `on(fn)` for events (`mode`, `status`, `candidate`, `alarm`, `error`). `tap(fn)` sees every raw
+  sample; that's how the recorder works without touching the detection code.
+* `tick(now)`: picks the mode with `selectMode()` and resolves pending fused decisions.
 * `raise()`: emits `'alarm'` unless suspended, inside the refractory window, or before `ignoreBefore`.
 * `resume(now)`: called when an alert is closed. It **re-arms immediately**. The end-to-end test
   found a bug here: after "I'm OK", a real fall within 10 s used to be ignored.
+* `idle()`: waits for in-flight inference (used by tests).
 
 **Mode selection (`selectMode`):** wearable OK = connected + data in the last 2 s + worn.
 Phone OK = connected + fresh data. Both OK and the phone isn't resting on a table → BOTH; wearable only →
-WEARABLE; phone only → PHONE; nothing → NONE (red warning). "Resting on a table" = |a|
-constant for 30 s **and** lying flat. Stillness alone isn't enough, because a phone in the pocket of
-someone sitting quietly is also still.
+WEARABLE; phone only → PHONE; nothing → NONE (red warning). "Resting on a table" is
+**detected by the engine**: |a| constant for 30 s **and** lying flat. Stillness alone isn't
+enough, because a phone in the pocket of someone sitting quietly is also still. The UI warns when it happens.
 
-### UI (`App.jsx`, `components/`)
-* `App.jsx`: boots (config → 2 models → replays), runs a 50 ms clock that pulls synchronised
-  samples from the `ScenarioPlayer` and pushes them into the engine, and handles alert state.
-* `SignalChart.jsx`: a canvas that redraws every frame from a mutable `store` ref. It doesn't use React
-  state, so 40 samples/s doesn't cause re-renders.
-* `AlertOverlay.jsx`: the 30 s countdown ring, "I'm OK — cancel", "Get help now", the heart-rate rise,
-  then the "Caregiver notified" screen showing the exact message.
+### Incidents (`web/src/incidents/`): the caregiver workflow
+* `model.js`: pure functions for the lifecycle
+  `countdown → cancelled | escalated → acknowledged → resolved (real fall / false alarm / unsure)`.
+  Every transition returns a new object with a timeline entry; impossible transitions throw.
+  Includes `incidentStats()` (for the ops numbers) and `incidentsToCsv()`.
+  A countdown whose phone went silent (for example the battery died) becomes **stale** and needs attention.
+* `localStore.js`: localStorage + BroadcastChannel, so **tabs of one browser sync instantly**.
+* `firebaseStore.js`: Firestore with anonymous auth, loaded only if configured (`docs/FIREBASE.md`).
+* `index.js`: picks the store; the rest of the app doesn't know which one it got.
+
+### UI (`App.jsx`, `views/`, `components/`)
+* `App.jsx`: a hash router: `#/` Person, `#/caregiver`, `#/split` (both side by side on wide
+  screens, good for the video). It also unlocks audio on the first tap (browsers require a gesture).
+* `views/PersonView.jsx`: boots (config → 2 models → replays → incident store), runs a 50 ms
+  clock that feeds synchronised replay samples into the engine, creates and updates the incident
+  on alarm / cancel / escalate, and shows where each device's data comes from.
+* `views/CaregiverView.jsx`: live incident list (needs attention / waiting / being handled / history),
+  "I'm on it", resolve with outcome + note, a chime on new alerts, stats and CSV export.
+* `components/AlertOverlay.jsx`: the 30 s countdown with tone + vibration + voice (English or
+  Hindi, `i18n.js`). After escalation it shows **who is responding**, live from the store.
+* `components/SignalChart.jsx`: a canvas redrawn every frame from a mutable ref (no React re-renders).
+* `components/RecorderPanel.jsx`: start/stop, label chips, CSV download.
+* `prefs.js` (persisted settings), `uid.js` (ids that work over plain-http LAN URLs too).
+* `public/sw.js` + `manifest.webmanifest`: installable, works offline (production build only).
 
 ### Tests
-* `npm test`: **parity** with Python (resampling, channels, features, ONNX probabilities, streaming
-  peaks) using `golden.json` produced by `export_models.py`.
-* `npm run smoke`: headless Chrome at iPhone size plays every fall and every daily activity and
-  checks the fallback logic. It needs `npm run build` first.
-* `pytest` (in `ml/`): unit tests, including orientation invariance.
+* `npm test` (vitest):
+  * `parity.test.js`: resampling, channels, features, ONNX outputs and streaming peaks vs Python.
+  * `engine.test.js`: the **whole engine** with real ONNX models must raise the **same alarms** as
+    Python, for each device and for fused phone + wrist replays.
+  * `incidents/model.test.js`: lifecycle, invalid transitions, stats, CSV, recorder.
+* `npm run smoke`: headless Chrome at iPhone size (needs `npm run build` first). It:
+  * plays every fall replay and one full take of each of the 11 everyday activities;
+  * runs the **two-tab caregiver flow** (escalate → "I'm on it" → resolve) and the Hindi alert;
+  * downloads a recorder CSV, checks the fallback modes, and renders the split view.
+
+  It passes if ≥5/6 falls alert and ≤1 everyday activity does, and prints the exact counts.
+* `pytest` (in `ml/`): unit tests (incl. orientation invariance) + `eval_recording.py` end to end.
+* CI (`.github/workflows/ci.yml`) runs all of the above on every push.
 
 ## 6. How to make common changes
 
 | I want to… | Do this |
 |---|---|
-| change the countdown length | `COUNTDOWN_S` in `components/AlertOverlay.jsx` |
-| change the person's name | `PERSON` in `App.jsx` |
+| change the countdown length | `COUNTDOWN_S` in `web/src/incidents/model.js` |
+| change the person's name | `PERSON` in `web/src/views/PersonView.jsx` |
+| add a language | add a key to `STRINGS` in `web/src/i18n.js` (and to `LANGS`) |
 | make the wrist less trigger-happy | pick a point further left on the wrist curve in `reports/figures/`, then in `export_models.py` override `thr` for `"wrist"` (e.g. 0.5) and re-export. Shipped thresholds otherwise come from the nested-CV median |
-| try the OR fusion rule | `new FallEngine(c, models, { rule: 'or' })` in `App.jsx` |
-| send real alerts | create `web/.env` with `VITE_ALERT_WEBHOOK_URL=https://…`, restart `npm run dev` |
+| change the fusion rule | `DEFAULT_RULE` in `ml/fallguard/fusion.py` → `export_models.py` (the browser reads it from `model_config.json`) → `npm test` |
+| share incidents across phones | `docs/FIREBASE.md` |
+| send alerts to another system | set `VITE_ALERT_WEBHOOK_URL` in `web/.env` |
 | add a feature | add it in `signal.py` **and** `signal.js` (same position in the list), re-run `train_eval.py` + `export_models.py`, then `npm test` checks you ported it correctly |
 | change the window length | `PRE_S`/`POST_S` in `config.py` → re-run everything from `train_eval.py` |
 | add a real device | write an adapter that calls the three engine methods; see `docs/real-devices.md` |
+| measure on real life | `docs/REAL_WORLD_TEST.md` |
 
 ## 7. Numbers to remember for the video
 
-* Phone: **94.9%** of falls caught, **0** false alarms in 16.8 h of held-out daily activity (threshold-only baseline: **119/h**)
-* Wrist: **94.2%** caught, **11/h** false alarms (baseline 101/h). With the phone fused in: **0.45/h**
-* Top LightGBM features: phone = **posture change** (tilt); wrist = **stillness after impact**
-* CNN: **6,225 parameters**; all models together ~230 KB per device; inference ~0.15 ms
-* Battery estimate: **~0.2%/day** on a phone, **~1%/day** on a watch
-* Honest weak spot: **one** 60+ subject with falls in the data, and 73% of their falls caught
+<!-- NUMBERS:START -->
+* Phone: **94.9%** of falls caught, **0.00** false alarms/h over 16.8 h of held-out daily activity (threshold-only baseline: **119/h**)
+* Wrist: **93.8%** caught, **12.6/h** false alarms (baseline 101/h)
+* Phone + wrist fused (log-odds): **98.6%** caught at **0.45/h** (first rule: 96.6%)
+* Top LightGBM features: phone = **posture change, final tilt**; wrist = **stillness after impact, impact peak**
+* CNN: **6,225 parameters**; models 231 KB (phone) / 205 KB (wrist); stage 2 ~0.15 ms
+* Battery estimate: **~0.18%/day** on a phone, **~1.01%/day** on a watch
+* Honest weak spot: **one** 60+ subject with falls in the data, and 72.0% of their falls caught
+<!-- NUMBERS:END -->
 
 ## 8. Questions an interviewer might ask
 
 * **"Why not just a threshold?"** It catches falls, but at 100+ false alarms/hour, because hopping and jogging hit the same g-forces.
 * **"Why 20 Hz?"** It's the lowest rate in our data (the wrist tags). Fall dynamics are mostly below 10 Hz. It's battery-friendly.
-* **"Why is your phone result so good?"** SisFall contributes 1,798 falls and 14.5 h of activity, and a phone near the hips sees whole-body motion clearly. The lab setting flatters it; real-world numbers will be worse.
-* **"How do you know the browser does the same thing as Python?"** Golden-vector parity tests, run in CI.
-* **"What about privacy?"** Inference runs on the device. Raw motion never leaves it; only the alert does.
-* **"What would you do with real users?"** Every "I'm OK" tap is a labelled false alarm. Use them (with consent) to personalise thresholds.
+* **"Why is your phone result so good?"** SisFall contributes 1,798 falls and 14.5 h of activity, and a phone near the hips sees whole-body motion clearly. The lab setting flatters it; real-world numbers will be worse, which is why `eval_recording.py` exists.
+* **"How do you know the browser does the same thing as Python?"** Golden-vector tests check every stage, *and* that the full engine raises identical alarms, run in CI.
+* **"How did you combine the two devices?"** Log-odds margins over each device's own threshold. Averaging normalised scores was the first version; an audit showed the phone could then never trigger alone. Fixing it raised fused sensitivity at the same false-alarm rate.
+* **"What about privacy?"** Inference runs on the device. Raw motion never leaves it; only incident metadata does.
+* **"What would you do with real users?"** Every "I'm OK" tap and every caregiver outcome is a labelled example. Use them (with consent) to personalise thresholds.
+* **"How did you use AI tools?"** Claude Code for pair-programming, plus a separate review agent that audited the code and docs for unsupported claims. It caught real bugs (a crash in every training script after a lint change, and the fusion asymmetry), which were fixed and re-evaluated.

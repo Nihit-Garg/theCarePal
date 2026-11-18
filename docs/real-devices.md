@@ -5,13 +5,14 @@ comes from. Every device — simulated or real — talks to it through three cal
 
 ```js
 engine.setDeviceStatus('wrist', { connected: true, worn: true }); // on connect / on-body changes
-engine.pushSample('wrist', [ax, ay, az], tSeconds);                // accelerometer, in g, at 20 Hz
+engine.pushSample('wrist', [ax, ay, az], tSeconds);                // accelerometer, in g, already at 20 Hz
 engine.pushHeartRate(tSeconds, bpm);                               // optional, wearables only
 ```
 
-So a real device needs only a small **adapter** that produces those calls. Whatever
-rate a device gives (25 Hz band, 50 Hz watch, ~60 Hz browser), `BinResampler`
-converts it to 20 Hz. Because the models only use orientation-invariant channels, it
+So a real device needs only a small **adapter** that produces those calls. The engine
+expects 20 Hz samples, so the adapter wraps the device's native rate (25 Hz band, 50 Hz
+watch, ~60 Hz browser) in a `BinResampler` (`web/src/engine/resample.js`), exactly as
+`livePhone.js` does for the phone. Because the models only use orientation-invariant channels, it
 doesn't matter how the watch is strapped on or how the phone sits in a pocket. That is
 also why the different axis conventions of Android, iOS and band firmware don't matter.
 
@@ -28,22 +29,25 @@ A production app would use a native background service, because browsers stop
 sensor events when the screen locks:
 * **Android:** `SensorManager` `TYPE_ACCELEROMETER` with `maxReportLatencyUs` batching in a
   foreground service, and ONNX Runtime Mobile running the same `.onnx` files.
-* **iOS:** `CMMotionManager` (or `CMSensorRecorder` for background), and the same models
-  via ONNX Runtime iOS or converted to Core ML.
+* **iOS:** `CMMotionManager` while the app is running, and the same models via ONNX Runtime
+  iOS or converted to Core ML. iOS strictly limits background execution, so continuous
+  phone-only detection with the screen locked is hard on iPhone. The watch (below) is the
+  better primary sensor for Apple users.
 
 ## Wear OS watch
 * Accelerometer: `SensorManager` on the watch (`TYPE_ACCELEROMETER`, `SENSOR_DELAY_GAME`
   ≈ 50 Hz, batched).
 * Heart rate and on-body: **Health Services** `MeasureClient` (`DataType.HEART_RATE_BPM`);
   `TYPE_LOW_LATENCY_OFFBODY_DETECT` sensor for worn / not worn.
-* Recommended: run stages 1 and 2 **on the watch** (the models are ~100 KB), and send only
+* Recommended: run stages 1 and 2 **on the watch** (the wrist models are ~205 KB), and send only
   events to the phone over the Wearable Data Layer (`MessageClient`). See
   `reports/battery.md`: streaming raw data over BLE costs more than the inference.
 
 ## Apple Watch
 * Accelerometer: `CMMotionManager` (`deviceMotion`/`accelerometerData` up to 100 Hz)
-  while an `HKWorkoutSession` keeps the app running, or `CMSensorRecorder` for
-  continuous background logging.
+  while an active `HKWorkoutSession` keeps the app running. That is what real-time
+  background detection needs. (`CMSensorRecorder` logs continuously but is read back
+  *later*, so it suits retrospective analysis, not live alerts.)
 * Heart rate: `HKLiveWorkoutBuilder`. On-wrist state is implied by heart-rate samples arriving.
 * Phone link: `WatchConnectivity` (`WCSession.sendMessage`) for events.
 * Note: Apple Watch's built-in Fall Detection is not exposed to third-party apps, but
