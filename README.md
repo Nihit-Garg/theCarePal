@@ -13,10 +13,10 @@ before a caregiver is notified. A **caregiver screen** then tracks each incident
 * A **caregiver / ops screen**: live incidents, "I'm on it", resolve as real fall or false alarm, stats, CSV export.
   It syncs across browser tabs out of the box, and across phones with Firebase
 * A **recorder** + `eval_recording.py` to measure false alarms on your own real-life recordings
-* An installable PWA that works offline; parity tests prove the browser matches the Python pipeline alarm-for-alarm
+* An installable PWA that keeps working offline after one online visit; tests check that the browser raises the same alarms as the Python pipeline on golden recordings (single devices and fused)
 
 > **Not a medical device.** This tool supports nurses and families. It does not
-> diagnose anything or replace medical judgement, and every alert says so.
+> diagnose anything or replace medical judgement; the alert screen and the caregiver message say so.
 
 [![CI](https://github.com/Nihit-Garg/theCarePal/actions/workflows/ci.yml/badge.svg)](https://github.com/Nihit-Garg/theCarePal/actions/workflows/ci.yml)
 
@@ -129,7 +129,7 @@ activity: [`reports/metrics.md`](reports/metrics.md) · fusion: [`reports/fusion
 |---|---|
 | **Device-agnostic, accelerometer-only** | Every phone and band has an accelerometer; many bands have no gyroscope. One code path covers Android, iPhone, Wear OS, Apple Watch and BLE bands. |
 | **Orientation-invariant inputs** | The phone can be any way up in a pocket and the band strapped either way. The models never see raw x/y/z, so axis conventions don't matter. |
-| **Two-stage detector** | Stage 1 rejects the vast majority of samples for free, so the ML runs on the order of 100 times per hour of activity at ~1 ms each, which keeps the battery cost negligible (`reports/battery.md`). |
+| **Two-stage detector** | Stage 1 rejects the vast majority of samples for free, so the ML runs only when there's an impact-like spike: a few hundred times per hour of intense lab activity, far fewer in a normal day, at ~1 ms each, which keeps the battery cost negligible (`reports/battery.md`). |
 | **Wait 2.5 s after impact** | "Fell and stayed down" is what separates a fall from sitting down hard. The latency is still a few seconds. |
 | **Subject-wise nested CV** | Random window splits put the same person in train and test and inflate results. Here thresholds are chosen on training people only, and test people are never seen. |
 | **Event-level metrics on full streams** | Sensitivity, specificity and false alarms per hour come from running the detector over whole recordings with the same streaming rules as the product (a peak is only judged once 2.5 s of data after it exist). |
@@ -138,7 +138,8 @@ activity: [`reports/metrics.md`](reports/metrics.md) · fusion: [`reports/fusion
 | **Runs in the browser (ONNX Runtime Web)** | No server, no cost, and no sensor data leaves the device. The same `.onnx` files run on Android, iOS and Wear OS through ONNX Runtime Mobile. |
 | **Python and JS parity tests** | The browser re-implements the pipeline, so `npm test` checks it against golden vectors exported from Python: resampling, channels, features, ONNX outputs, and the **exact alarms** the full engine raises, single-device and fused. |
 | **Incidents as pure state transitions** | `countdown → cancelled / escalated → acknowledged → resolved`, as pure functions, so the same logic works with localStorage or Firestore and is unit-tested. Outcomes become labelled data. |
-| **Caregiver sync without an account by default** | Two tabs of one browser sync instantly (BroadcastChannel), so anyone can try the full flow; Firebase is one `.env` away (`docs/FIREBASE.md`). |
+| **Caregiver sync without an account by default** | Two tabs of one browser sync instantly (localStorage events), so anyone can try the full flow; Firebase is one `.env` away (`docs/FIREBASE.md`). Updates are transitions applied to the latest version (a transaction in Firestore), so two caregivers can't overwrite each other. |
+| **Honest alert states** | The person's screen says "contacting…", then "alerted" or "couldn't reach — call for help", and only names a responder once one has acknowledged. A broken sync shows "Sync lost" on the caregiver screen, never "All clear". |
 
 ## Data
 
@@ -151,7 +152,7 @@ Only public data is used. No real patient data, and none of TheCarePal's data.
 
 ## Run it
 
-Requirements: Python 3.10–3.12, Node 18+, ~1 GB of disk.
+Requirements: Python 3.10–3.12, Node 20+, ~1 GB of disk.
 
 ```bash
 # 1. Python environment (uv shown; plain venv + pip works too)
@@ -206,7 +207,7 @@ escalation to another system.
 ```
 ml/fallguard/        datasets.py  signal.py  detector.py  models.py  evaluate.py  fusion.py  onnx_model.py
 ml/scripts/          download_data.sh  prepare_data.py  train_eval.py  eval_fusion.py
-                     export_models.py  battery_estimate.py  eval_recording.py
+                     export_models.py  battery_estimate.py  eval_recording.py  update_docs.py
 ml/tests/            unit tests (incl. random-rotation invariance) + eval_recording end to end
 web/src/engine/      resample.js signal.js detector.js model.js fusion.js engine.js   ← detection
                      sim.js livePhone.js recorder.js alertFx.js wakeLock.js notify.js
@@ -214,17 +215,18 @@ web/src/engine/      resample.js signal.js detector.js model.js fusion.js engine
 web/src/incidents/   model.js (lifecycle) localStore.js firebaseStore.js index.js model.test.js
 web/src/views/       PersonView.jsx  CaregiverView.jsx        web/src/App.jsx (router)
 web/src/components/  AlertOverlay.jsx  SignalChart.jsx  RecorderPanel.jsx
-web/public/          models/ (*.onnx, model_config.json) · replays/ · sw.js · manifest · icons/
+web/public/          models/ (*.onnx, model_config.json) · replays/ · manifest · icons/
+web/src/sw.template.js  service worker; vite.config.js fills in the precache list at build time
 web/scripts/         smoke.mjs (headless-Chrome end-to-end test)
 reports/             metrics.md  fusion.md  battery.md  figures/
 docs/                WALKTHROUGH · MODEL_CARD · REAL_WORLD_TEST · real-devices · FIREBASE · VIDEO_SCRIPT
-firestore.rules      security rules for the shared incident store
+firestore.rules      security rules for the shared incident store (+ firebase.json for the CLI)
 .github/workflows/   ci.yml (lint, unit + parity + engine tests, build, headless smoke) · pages.yml
 ```
 
 ## Assumptions and limitations
 
-* **Lab data ≠ real life.** Falls were simulated by young volunteers onto mats; the
+* **Lab data ≠ real life.** Falls were simulated by mostly young volunteers onto mats; the
   everyday activities are short, dense bursts. False alarms per hour measured this way are a
   pessimistic upper bound, and the sensitivity on real elderly falls is unknown. Those are
   slower, and some happen from sitting or lying.
@@ -253,8 +255,8 @@ firestore.rules      security rules for the shared incident store
    to a phone call or SMS if nobody acknowledges** within the overdue window (the caregiver screen
    already flags overdue incidents). Real accounts with per-care-team security rules, and incidents
    showing in the ops CRM.
-3. **Learn from outcomes**: every "I'm OK" and every caregiver resolution is a labelled example
-   (already exported as CSV). With consent, use them to tune thresholds per person (someone with
+3. **Learn from outcomes**: every caregiver resolution (real fall / false alarm) is a labelled example,
+   already exported as CSV. "I'm OK" cancellations are kept as an *unconfirmed* signal, not as false alarms. With consent, use them to tune thresholds per person (someone with
    a vigorous gait gets a different operating point).
 4. **Longer real-world validation**: the recorder and `eval_recording.py` are built for this. Wear-test
    with staff and volunteers for full days to measure true false alarms per day, and evaluate on

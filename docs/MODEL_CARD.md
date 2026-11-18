@@ -24,7 +24,7 @@
 ## Training and evaluation data
 | Dataset | Position | People | Content |
 |---|---|---|---|
-| UMAFall (Casilari et al., 2017) | phone (pocket) + wrist, simultaneous | 19 (young adults) | simulated falls onto a mattress (forward / backward / sideways), 12 everyday activities |
+| UMAFall (Casilari et al., 2017) | phone (pocket) + wrist, simultaneous | 19 (mostly young adults; a few older participants did everyday activities only) | simulated falls onto a mattress (forward / backward / sideways), 12 everyday activities |
 | SisFall (Sucerquia et al., 2017) | waist (phone proxy) | 38, incl. 15 aged 60+ | 15 fall types, 19 everyday activities; only one 60+ participant performed falls |
 
 All data is public. No TheCarePal or patient data was used.
@@ -59,7 +59,8 @@ Fused phone + wrist: 98.6% sensitivity, 0.45 false alarms/h (UMAFall, held-out p
 * **Lab activity clips** are short and intense, so false alarms per hour measured on them are a
   pessimistic estimate. Use `ml/scripts/eval_recording.py` on real-life recordings.
 * **The wrist is harder** than the phone. Clapping, raising hands and lying down on a bed are the
-  most common wrist false alarms.
+  most common wrist false alarms, and the wrist false-alarm rate was higher for the older UMAFall
+  participants' everyday activities (see `reports/metrics.md`, subgroup `elderly_60plus`).
 * **Soft falls / slumps** below the stage-1 trigger cannot be detected (a long-lie or inactivity
   detector is future work).
 * **Heart-rate confirmation** is shown to caregivers but never blocks an alert. In the demo it
@@ -69,9 +70,12 @@ Fused phone + wrist: 98.6% sensitivity, 0.45 false alarms/h (UMAFall, held-out p
 
 ## Ethical considerations
 * **Over-reliance:** families may assume "the app will catch it". The UI always shows which sensor
-  is active and says plainly when none is, and every alert states it isn't a diagnosis.
+  is active and says plainly when none is, and the alert screen and caregiver message both state it isn't a diagnosis.
 * **Privacy:** inference runs on the device. Raw motion never leaves it; only incident
   metadata (time, sensor, scores, heart-rate change, responder, outcome) is shared with the care team.
+* **Labels:** a person's "I'm OK" is stored as *person OK (unconfirmed)*, not as a false alarm.
+  People often fall and are fine, and treating cancellations as false alarms would bias tuning
+  towards missing real falls. Only caregiver-confirmed outcomes are labels.
 * **Consent:** recordings for real-world testing are only created when the user presses record,
   and they stay on the device until downloaded.
 * **Fairness:** performance across age, body type, gait aids (walkers, canes) and clothing hasn't been

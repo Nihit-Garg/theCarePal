@@ -118,7 +118,7 @@ Each device then contributes its **evidence margin over its own threshold**:
 A device with no candidate near that moment counts as −3.
 
 *Why not simply average `p / threshold`?* That was the first version, and the code audit caught
-the flaw: with thresholds 0.93 (phone) and 0.41 (wrist), the phone's score can never exceed
+the flaw: with a phone threshold of 0.93 (and ~0.4 for the wrist), the phone's score can never exceed
 1/0.93 ≈ 1.08, so it could **never** carry a decision on its own. Log-odds margins are symmetric.
 The clip (3) was fixed before looking at results; `reports/fusion.md` shows that clips 2 and 4
 give almost the same numbers. `onnx_model.py` lets Python run the exact shipped ONNX files.
@@ -190,41 +190,64 @@ enough, because a phone in the pocket of someone sitting quietly is also still. 
 * `model.js`: pure functions for the lifecycle
   `countdown → cancelled | escalated → acknowledged → resolved (real fall / false alarm / unsure)`.
   Every transition returns a new object with a timeline entry; impossible transitions throw.
+  A person's "I'm OK" is stored as `person_ok` (unconfirmed), **not** as a false alarm.
   Includes `incidentStats()` (for the ops numbers) and `incidentsToCsv()`.
   A countdown whose phone went silent (for example the battery died) becomes **stale** and needs attention.
-* `localStore.js`: localStorage + BroadcastChannel, so **tabs of one browser sync instantly**.
+* `localStore.js`: localStorage (one key per incident) + the cross-tab `storage` event, so **tabs of one
+  browser sync instantly**. `update(id, fn)` applies a transition to the *latest* stored version.
+* Both stores have the same API: `create(incident)`, `update(id, fn)`, `subscribe(fn(list, {ready, error}))`.
+  In Firebase, `update` is a **transaction**, so two caregivers can't overwrite each other, and a broken
+  live connection is reported (red "Sync lost" banner) and retried, never shown as "All clear".
 * `firebaseStore.js`: Firestore with anonymous auth, loaded only if configured (`docs/FIREBASE.md`).
 * `index.js`: picks the store; the rest of the app doesn't know which one it got.
 
 ### UI (`App.jsx`, `views/`, `components/`)
 * `App.jsx`: a hash router: `#/` Person, `#/caregiver`, `#/split` (both side by side on wide
-  screens, good for the video). It also unlocks audio on the first tap (browsers require a gesture).
-* `views/PersonView.jsx`: boots (config → 2 models → replays → incident store), runs a 50 ms
-  clock that feeds synchronised replay samples into the engine, creates and updates the incident
-  on alarm / cancel / escalate, and shows where each device's data comes from.
+  screens, good for the video). There is **one** PersonView per tab, never unmounted when you switch
+  views, so a running countdown or recording continues, like the person's real phone. A tab opened
+  straight on the caregiver screen doesn't start a person simulation, which would raise duplicate
+  alarms. It also unlocks audio on the first tap (browsers require a gesture).
+* `views/PersonView.jsx`: boots detection from just the config + 2 models. Replays and the incident
+  store load separately, so neither can delay detection. It runs a 50 ms clock that feeds
+  synchronised replay samples into the engine, creates the incident on alarm, and applies cancel /
+  escalate **only if it is still counting down** (a caregiver may have acted already); store errors
+  never block the alert. On escalation the store write and the optional webhook run **in parallel**,
+  and the screen shows the real outcome (contacting / alerted / couldn't reach). Choosing
+  "This phone" disconnects the simulated wearable, so real and simulated data never mix.
 * `views/CaregiverView.jsx`: live incident list (needs attention / waiting / being handled / history),
   "I'm on it", resolve with outcome + note, a chime on new alerts, stats and CSV export.
 * `components/AlertOverlay.jsx`: the 30 s countdown with tone + vibration + voice (English or
-  Hindi, `i18n.js`). After escalation it shows **who is responding**, live from the store.
+  Hindi, `i18n.js`) and a "not a diagnosis" line. After escalation it shows the delivery state, and
+  **who is responding** once someone acknowledges, live from the store. It never says help is coming
+  before that.
 * `components/SignalChart.jsx`: a canvas redrawn every frame from a mutable ref (no React re-renders).
 * `components/RecorderPanel.jsx`: start/stop, label chips, CSV download.
-* `prefs.js` (persisted settings), `uid.js` (ids that work over plain-http LAN URLs too).
-* `public/sw.js` + `manifest.webmanifest`: installable, works offline (production build only).
+* `prefs.js` (persisted settings), `uid.js` (ids that work over plain-http LAN URLs too),
+  `format.js` (shared time / score text / file-download helpers).
+* `src/sw.template.js` → `dist/sw.js` + `manifest.webmanifest`: installable. A small Vite plugin
+  (`vite.config.js`) writes the full list of built files into the service worker, so **one online
+  visit** caches everything needed offline (bundle, ONNX Runtime `.wasm`, models, replays). Each build
+  gets a new cache version. Production build only.
 
 ### Tests
 * `npm test` (vitest):
   * `parity.test.js`: resampling, channels, features, ONNX outputs and streaming peaks vs Python.
-  * `engine.test.js`: the **whole engine** with real ONNX models must raise the **same alarms** as
-    Python, for each device and for fused phone + wrist replays.
-  * `incidents/model.test.js`: lifecycle, invalid transitions, stats, CSV, recorder.
+  * `engine.test.js`: the **whole engine** with real ONNX models must produce the same candidates,
+    probabilities and **alarms** as Python on golden recordings: one stream per device, and fused phone +
+    wrist replays (a fall, lying down on a bed, clapping). The fused cases also run in real-time order
+    (inference finishes after every sample), which exercises the engine's own fused-decision wait.
+  * `incidents/model.test.js`: lifecycle, invalid transitions, stats, CSV.
+  * `incidents/localStore.test.js`: persistence, and a second "I'm on it" fails instead of overwriting the first.
+  * `engine/recorder.test.js`: the recorder CSV.
 * `npm run smoke`: headless Chrome at iPhone size (needs `npm run build` first). It:
   * plays every fall replay and one full take of each of the 11 everyday activities;
-  * runs the **two-tab caregiver flow** (escalate → "I'm on it" → resolve) and the Hindi alert;
+  * runs the **two-tab caregiver flow** (escalate → "I'm on it" → resolve) and the Hindi alert, with
+    audio muted, so it never plays through the developer's speakers;
   * downloads a recorder CSV, checks the fallback modes, and renders the split view.
 
   It passes if ≥5/6 falls alert and ≤1 everyday activity does, and prints the exact counts.
 * `pytest` (in `ml/`): unit tests (incl. orientation invariance) + `eval_recording.py` end to end.
-* CI (`.github/workflows/ci.yml`) runs all of the above on every push.
+* CI (`.github/workflows/ci.yml`) runs all of the above on every push to `main` and on every pull request.
 
 ## 6. How to make common changes
 
@@ -262,5 +285,5 @@ enough, because a phone in the pocket of someone sitting quietly is also still. 
 * **"How do you know the browser does the same thing as Python?"** Golden-vector tests check every stage, *and* that the full engine raises identical alarms, run in CI.
 * **"How did you combine the two devices?"** Log-odds margins over each device's own threshold. Averaging normalised scores was the first version; an audit showed the phone could then never trigger alone. Fixing it raised fused sensitivity at the same false-alarm rate.
 * **"What about privacy?"** Inference runs on the device. Raw motion never leaves it; only incident metadata does.
-* **"What would you do with real users?"** Every "I'm OK" tap and every caregiver outcome is a labelled example. Use them (with consent) to personalise thresholds.
+* **"What would you do with real users?"** Every caregiver-confirmed outcome (real fall / false alarm) is a labelled example; "I'm OK" taps are kept as unconfirmed signals, because people often fall and are fine. Use them (with consent) to personalise thresholds.
 * **"How did you use AI tools?"** Claude Code for pair-programming, plus a separate review agent that audited the code and docs for unsupported claims. It caught real bugs (a crash in every training script after a lint change, and the fusion asymmetry), which were fixed and re-evaluated.

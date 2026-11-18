@@ -23,8 +23,8 @@ before recording.
    dots are the model's scores, and they stay below the line."
 3. Tap **Forward fall**: "A real fall… it waits a few seconds to see that she stays down…"
    → alarm, voice prompt, countdown. "Big button, sound, vibration, and a spoken prompt.
-   Older users can switch it to Hindi." Tap **I'm OK**. On the right: "cancelled, recorded as a
-   false alarm. That's free labelled data."
+   Older users can switch it to Hindi." Tap **I'm OK**. On the right: "cancelled — recorded as 'person OK',
+   not as a false alarm, because people often fall and are fine."
 4. Tap **Backward fall** → **Get help now**. Right side: the incident appears under *Needs attention*.
    Tap **I'm on it** → left side shows "Nurse Priya is responding". Tap **Real fall**, add a note.
    Point at the stats: confirmed falls, false alarms, median time to respond, CSV export.
@@ -64,11 +64,11 @@ before recording.
 ### 3:50–4:30 · Engineering and next steps
 > "Everything is tested: Python unit tests, parity tests proving the browser raises exactly the
 > same alarms as the Python code, and an end-to-end test that drives the app in headless Chrome,
-> including the two-tab caregiver flow, in CI on every push. The battery estimate is about 0.2% a
+> including the two-tab caregiver flow, in CI on every push to main. The battery estimate is about 0.2% a
 > day on a phone and 1% on a watch."
 
 > "Next: native Android and Wear OS apps with the same ONNX models, Firebase push notifications
-> with phone-call escalation, and using every 'I'm OK' and every caregiver outcome to personalise
+> with phone-call escalation, and using caregiver-confirmed outcomes to personalise
 > thresholds. Thanks for watching."
 
 ---
