@@ -23,8 +23,11 @@ beforeAll(async () => {
   }
 });
 
-/** Stream synchronised samples through a fresh engine; returns alarm sample indices + candidates. */
-async function run(streams) {
+/** Stream synchronised samples through a fresh engine; returns alarm sample indices + candidates.
+ * idleEvery = 1 waits for inference after every sample, i.e. real-time order: each candidate
+ * is scored before the next sample arrives, so fused decisions are resolved by the engine's
+ * own wait (fuseWait) exactly as in the app. Larger values batch inference (fast path). */
+async function run(streams, idleEvery = 200) {
   const engine = new FallEngine(cfg, models);
   const alarms = [], cands = { phone: [], wrist: [] };
   engine.on((type, d) => {
@@ -37,7 +40,7 @@ async function run(streams) {
     const t = i / cfg.fs;
     for (const [id, s] of Object.entries(streams)) if (i < s.length) engine.pushSample(id, s[i], t);
     engine.tick(t);
-    if (i % 200 === 0) await engine.idle(); // let inference finish while the mode is current
+    if (i % idleEvery === 0) await engine.idle();
   }
   await engine.idle();
   engine.tick(n / cfg.fs + 60); // resolve any pending fused decisions
@@ -59,10 +62,18 @@ describe('fused phone + wrist (synchronised held-out replays)', () => {
     expect(cfg.fusion.rule).toBe('logodds');
   });
   for (const c of golden.fusion.cases) {
-    it(`${c.activity}: same fused alarms as Python`, async () => {
-      const { alarms, cands } = await run({ phone: c.phone, wrist: c.wrist });
-      for (const pos of ['phone', 'wrist']) expect(cands[pos].map((x) => x.i)).toEqual(c.candidates[pos].peaks);
-      expect(alarms).toEqual(c.alarms);
-    });
+    for (const [mode, every] of [['batched', 200], ['real-time order', 1]]) {
+      it(`${c.activity} (${mode}): same candidates, probabilities and fused alarms as Python`, async () => {
+        const { alarms, cands } = await run({ phone: c.phone, wrist: c.wrist }, every);
+        for (const pos of ['phone', 'wrist']) {
+          expect(cands[pos].map((x) => x.i)).toEqual(c.candidates[pos].peaks);
+          cands[pos].forEach((x, k) => expect(Math.abs(x.p - c.candidates[pos].probs[k])).toBeLessThan(1e-3));
+        }
+        expect(alarms).toEqual(c.alarms);
+      });
+    }
   }
+  it('golden thresholds are the shipped ones', () => {
+    for (const pos of ['phone', 'wrist']) expect(golden.fusion.thresholds[pos]).toBe(cfg.positions[pos].threshold);
+  });
 });

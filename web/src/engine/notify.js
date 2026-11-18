@@ -1,23 +1,24 @@
-// Caregiver notification. With VITE_ALERT_WEBHOOK_URL set (e.g. a Firebase Cloud
-// Function that writes to Firestore and sends FCM pushes to the nurse app), the
-// alert is POSTed there. Without it, the demo just shows the message it would send.
+// Optional second channel: with VITE_ALERT_WEBHOOK_URL set (e.g. a Firebase Cloud
+// Function that sends an FCM push or SMS), each escalation is also POSTed there.
+// Runs in parallel with the incident-store write, so one dead channel never blocks
+// the other. Returns { status: 'sent' | 'failed' | 'skipped', text }.
+import { scoresText } from '../format.js';
 
 const WEBHOOK = import.meta.env.VITE_ALERT_WEBHOOK_URL;
 
 export async function notifyCaregiver({ person, message, alert }) {
-  if (!WEBHOOK) return 'Demo mode: no webhook configured, so this is the message that would be sent.';
+  if (!WEBHOOK) return { status: 'skipped', text: 'No webhook configured.' };
   try {
     const res = await fetch(WEBHOOK, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         type: 'possible_fall', person, message, detectedAt: new Date(alert.startedAt).toISOString(),
-        mode: alert.mode?.key, hrRise: alert.hrRise,
-        scores: Object.fromEntries(Object.entries(alert.scores).filter(([, c]) => c).map(([k, c]) => [k, c.p])),
+        mode: alert.mode?.key, hrRise: alert.hrRise, scores: scoresText(alert.scores, ', '),
       }),
     });
-    return res.ok ? 'Sent to the caregiver webhook.' : `Webhook returned ${res.status} — escalate by phone.`;
+    return res.ok ? { status: 'sent', text: 'Webhook delivered.' } : { status: 'failed', text: `Webhook returned ${res.status}.` };
   } catch (err) {
-    return `Could not reach the webhook (${err.message}) — escalate by phone.`;
+    return { status: 'failed', text: `Webhook unreachable (${err.message}).` };
   }
 }

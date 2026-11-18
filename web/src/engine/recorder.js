@@ -4,6 +4,8 @@
 // export, then run `python ml/scripts/eval_recording.py file.csv` to measure the
 // real false-alarm rate on unscripted activity (see docs/REAL_WORLD_TEST.md).
 
+import { downloadText } from '../format.js';
+
 export const CSV_HEADER = 't,device,ax,ay,az,hr,event,detail';
 
 export class SessionRecorder {
@@ -64,11 +66,6 @@ export class SessionRecorder {
   }
 
   download(filename = `fallguard-recording-${new Date().toISOString().replace(/[:.]/g, '-')}.csv`) {
-    const url = URL.createObjectURL(new Blob([this.toCsv()], { type: 'text/csv' }));
-    const a = Object.assign(document.createElement('a'), { href: url, download: filename });
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    downloadText(filename, this.toCsv());
   }
 }

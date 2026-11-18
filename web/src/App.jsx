@@ -24,6 +24,11 @@ function useRoute() {
 
 export default function App() {
   const route = useRoute();
+  // A tab opened straight on the caregiver screen must NOT run a (hidden) person
+  // simulation — it would raise its own duplicate alarms. Start the person view the
+  // first time this tab shows it, then keep it mounted.
+  const [personStarted, setPersonStarted] = useState(route !== '#/caregiver');
+  useEffect(() => { if (route !== '#/caregiver') setPersonStarted(true); }, [route]);
 
   // Browsers only allow sound after a user gesture: unlock on the first tap anywhere.
   useEffect(() => {
@@ -44,14 +49,18 @@ export default function App() {
           Caregiver in new tab ↗
         </a>
       </nav>
-      {route === '#/' && <main className="app"><PersonView /></main>}
-      {route === '#/caregiver' && <main className="app"><CaregiverView /></main>}
-      {route === '#/split' && (
-        <main className="split">
-          <section className="split-col person-col" aria-label="Person's phone"><PersonView embedded /></section>
-          <section className="split-col" aria-label="Caregiver"><CaregiverView /></section>
-        </main>
-      )}
+      {/* ONE PersonView instance for every route, so switching views never unmounts it:
+          a countdown keeps running (and escalates) and a recording keeps going while you
+          look at the caregiver screen — just like the person's real phone would. */}
+      <main className={route === '#/split' ? 'split' : 'app'}>
+        {personStarted && (
+          <section className={`split-col person-col ${route === '#/caregiver' ? 'hidden-view' : ''}`}
+            aria-label="Person's phone" aria-hidden={route === '#/caregiver'}>
+            <PersonView embedded={route === '#/split'} />
+          </section>
+        )}
+        {route !== '#/' && <section className="split-col" aria-label="Caregiver"><CaregiverView /></section>}
+      </main>
     </>
   );
 }

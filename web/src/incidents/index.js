@@ -16,14 +16,18 @@ export function firebaseConfigFromEnv() {
 
 let storePromise = null;
 
+/** Firebase if configured, else the local store. If Firebase can't be reached
+ * (offline, auth failure) we fall back to the local store for now but forget the
+ * failure, so the next call — e.g. a reload or the caregiver screen — retries. */
 export function getIncidentStore() {
   if (!storePromise) {
     const cfg = firebaseConfigFromEnv();
     storePromise = cfg
       ? import('./firebaseStore.js').then((m) => m.createFirebaseStore(cfg)).catch((err) => {
-        console.error('Firebase unavailable, falling back to the local store', err);
+        console.error('Firebase unavailable, using the local store for now', err);
+        storePromise = null; // retry next time
         const s = new LocalIncidentStore();
-        s.label = `This browser (Firebase failed: ${err.message})`;
+        s.label = `This browser only — Firebase unreachable (${err.message})`;
         return s;
       })
       : Promise.resolve(new LocalIncidentStore());

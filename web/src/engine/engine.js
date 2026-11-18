@@ -12,14 +12,14 @@ import { DeviceDetector } from './detector.js';
 import { MODES, PHONE_RESTING_S, fuseScores, isResting, margin, selectMode } from './fusion.js';
 
 const DEVICE_IDS = ['phone', 'wrist'];
-const DEFAULT_FUSION = { rule: 'logodds', match_s: 1.5, logodds_clip: 3 };
 const INFERENCE_MARGIN_S = 0.5;
 
 export class FallEngine {
   constructor(cfg, models) {
     this.cfg = cfg;
     this.models = models; // { phone: FallModel, wrist: FallModel }
-    this.fusion = cfg.fusion || DEFAULT_FUSION;
+    if (!cfg.fusion) throw new Error('model_config.json has no "fusion" settings — re-run ml/scripts/export_models.py');
+    this.fusion = cfg.fusion; // exported from ml/fallguard/fusion.py, never duplicated here
     // A fused decision about a peak at time t waits until the other device's
     // candidate (peak up to match_s later) has been detected (post seconds after
     // its peak) and scored.

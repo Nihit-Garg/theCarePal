@@ -5,11 +5,10 @@ import {
   OUTCOMES, STATUS, acknowledgeIncident, incidentStats, incidentsToCsv, isOverdue, isStaleCountdown,
   needsAttention, resolveIncident,
 } from '../incidents/model.js';
+import { downloadText, scoresText, timeStr as clock } from '../format.js';
 import { usePref } from '../prefs.js';
 
-function clock(ms) {
-  return new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-}
+const OUTCOME_LABELS = { ...OUTCOMES, person_ok: 'Person OK (unconfirmed)' };
 
 function ago(ms, now) {
   const s = Math.max(0, Math.round((now - ms) / 1000));
@@ -18,17 +17,14 @@ function ago(ms, now) {
   return `${Math.floor(s / 3600)} h ago`;
 }
 
-function scoresText(inc) {
-  const parts = Object.entries(inc.detection.scores).map(([d, p]) => `${d === 'wrist' ? 'wearable' : 'phone'} ${Math.round(p * 100)}%`);
-  return parts.join(' · ');
-}
-
-function IncidentCard({ inc, now, me, onSave }) {
+function IncidentCard({ inc, now, me, onUpdate }) {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  // fn is applied by the store to the LATEST version (a transaction in Firebase),
+  // so if someone else acted first the transition fails cleanly instead of overwriting.
   const act = async (fn) => {
     setBusy(true);
-    try { await onSave(fn()); } finally { setBusy(false); }
+    try { await onUpdate(inc.id, fn); } finally { setBusy(false); }
   };
   const stale = isStaleCountdown(inc, now);
   const overdue = isOverdue(inc, now);
@@ -47,16 +43,16 @@ function IncidentCard({ inc, now, me, onSave }) {
         {inc.status === STATUS.ESCALATED && <>{inc.escalation.reason === 'help' ? 'Asked for help' : 'Did not respond'} — needs someone now{overdue && <span className="badge danger">Overdue</span>}</>}
         {inc.status === STATUS.ACKNOWLEDGED && <>{inc.ack.by} is responding</>}
         {inc.status === STATUS.CANCELLED && <>Cancelled by {inc.person} (“I'm OK”)</>}
-        {inc.status === STATUS.RESOLVED && <>Resolved: <span className={`badge ${inc.resolution.outcome}`}>{OUTCOMES[inc.resolution.outcome]}</span> by {inc.resolution.by}</>}
+        {inc.status === STATUS.RESOLVED && <>Resolved: <span className={`badge ${inc.resolution.outcome}`}>{OUTCOME_LABELS[inc.resolution.outcome]}</span> by {inc.resolution.by}</>}
       </p>
       <p className="small muted">
-        {inc.detection.modeLabel} · {scoresText(inc)}
+        {inc.detection.modeLabel} · {scoresText(inc.detection.scores)}
         {inc.hrRise != null && ` · heart rate ${inc.hrRise >= 0 ? '+' : ''}${Math.round(inc.hrRise)} bpm`}
       </p>
 
       {(inc.status === STATUS.ESCALATED || stale) && (
         <button className="btn-sm primary" disabled={busy}
-          onClick={() => act(() => acknowledgeIncident(inc, me))}>I'm on it</button>
+          onClick={() => act((cur) => acknowledgeIncident(cur, me))}>I'm on it</button>
       )}
       {[STATUS.ESCALATED, STATUS.ACKNOWLEDGED].includes(inc.status) && (
         <div className="resolve">
@@ -64,7 +60,7 @@ function IncidentCard({ inc, now, me, onSave }) {
           <div className="row">
             {Object.entries(OUTCOMES).map(([k, label]) => (
               <button key={k} className={`btn-sm outcome-${k}`} disabled={busy}
-                onClick={() => act(() => resolveIncident(inc, { outcome: k, note, by: me }))}>{label}</button>
+                onClick={() => act((cur) => resolveIncident(cur, { outcome: k, note, by: me }))}>{label}</button>
             ))}
           </div>
         </div>
@@ -86,6 +82,7 @@ function IncidentCard({ inc, now, me, onSave }) {
 export default function CaregiverView() {
   const [store, setStore] = useState(null);
   const [incidents, setIncidents] = useState([]);
+  const [sync, setSync] = useState({ ready: false, error: null });
   const [now, setNow] = useState(Date.now());
   const [me, setMe] = usePref('caregiverName', 'Nurse Priya');
   const [chime, setChime] = useState(false);
@@ -94,8 +91,13 @@ export default function CaregiverView() {
 
   useEffect(() => {
     let unsub = () => {};
-    getIncidentStore().then((s) => { setStore(s); unsub = s.subscribe(setIncidents); });
-    return () => unsub();
+    let alive = true;
+    getIncidentStore().then((s) => {
+      if (!alive) return; // unmounted before the store was ready
+      setStore(s);
+      unsub = s.subscribe((list, meta) => { setIncidents(list); setSync(meta); });
+    });
+    return () => { alive = false; unsub(); };
   }, []);
 
   useEffect(() => {
@@ -113,17 +115,12 @@ export default function CaregiverView() {
     }
   }, [incidents, now, chime]);
 
-  const save = async (inc) => {
+  const update = async (id, fn) => {
     setError('');
-    try { await store.put(inc); } catch (err) { setError(err.message); }
+    try { await store.update(id, fn); } catch (err) { setError(`Not saved: ${err.message} (someone may have acted on it already)`); }
   };
 
-  const exportCsv = () => {
-    const url = URL.createObjectURL(new Blob([incidentsToCsv(incidents)], { type: 'text/csv' }));
-    const a = Object.assign(document.createElement('a'), { href: url, download: 'fallguard-incidents.csv' });
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  };
+  const exportCsv = () => downloadText('fallguard-incidents.csv', incidentsToCsv(incidents));
 
   const urgent = incidents.filter((i) => needsAttention(i, now));
   const pending = incidents.filter((i) => i.status === STATUS.COUNTDOWN && !isStaleCountdown(i, now));
@@ -135,7 +132,7 @@ export default function CaregiverView() {
     <section className="card">
       <h2>{title} <span className="count">{list.length}</span></h2>
       {list.length === 0 ? <p className="small muted">{empty}</p>
-        : list.map((inc) => <IncidentCard key={inc.id} inc={inc} now={now} me={me} onSave={save} />)}
+        : list.map((inc) => <IncidentCard key={inc.id} inc={inc} now={now} me={me} onUpdate={update} />)}
     </section>
   );
 
@@ -146,7 +143,9 @@ export default function CaregiverView() {
           <h1>Caregiver</h1>
           <p className="muted">Alerts for the people you look after</p>
         </div>
-        <span className={`pill ${urgent.length ? 'mode-NONE' : ''}`}>{urgent.length ? `${urgent.length} need attention` : 'All clear'}</span>
+        <span className={`pill ${urgent.length || sync.error ? 'urgent' : ''}`}>
+          {sync.error ? 'Sync lost' : !sync.ready ? 'Connecting…' : urgent.length ? `${urgent.length} need attention` : 'All clear'}
+        </span>
       </header>
 
       <section className="card settings-row">
@@ -154,12 +153,16 @@ export default function CaregiverView() {
         <label><input type="checkbox" checked={chime} onChange={(e) => { if (e.target.checked) unlockAudio(); setChime(e.target.checked); }} /> Sound on new alerts</label>
         <span className="small muted">Sync: {store ? store.label : 'connecting…'}</span>
       </section>
+      {sync.error && (
+        <p className="sync-lost" role="alert">Sync with the alert server is lost — new alerts may not appear here. Retrying… ({sync.error})</p>
+      )}
       {error && <p className="warn">{error}</p>}
 
-      <section className="stats" aria-label="Last 7 days">
+      <section className="stats" aria-label="Last 7 days (latest 100 alerts)">
         <div><b>{st.total}</b><span>alerts (7 days)</span></div>
         <div><b>{st.confirmedFalls}</b><span>confirmed falls</span></div>
         <div><b>{st.falseAlarms}</b><span>false alarms</span></div>
+        <div><b>{st.cancelledByPerson}</b><span>cancelled by person</span></div>
         <div><b>{st.medianAckSeconds == null ? '—' : `${Math.round(st.medianAckSeconds)}s`}</b><span>median time to respond</span></div>
       </section>
 

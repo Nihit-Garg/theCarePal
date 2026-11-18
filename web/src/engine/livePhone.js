@@ -22,13 +22,18 @@ export async function requestMotionPermission() {
 
 /** Starts streaming; returns a stop() function. onSample([x,y,z], tSeconds). */
 export function startLivePhone(fs, onSample, onNoData) {
-  const resampler = new BinResampler(fs, (s) => onSample(s, performance.now() / 1000));
+  // Each output sample is stamped with its bin's time (t0 + bin / fs), not the moment
+  // it was emitted: emission happens one bin late, and gap-filled bins come in bursts.
+  let t0 = null;
+  const resampler = new BinResampler(fs, (s, bin) => onSample(s, t0 / 1000 + bin / fs));
   let got = false;
   const handler = (e) => {
     const a = e.accelerationIncludingGravity;
     if (!a || a.x == null) return;
     got = true;
-    resampler.push(performance.now(), a.x / G, a.y / G, a.z / G);
+    const now = performance.now();
+    if (t0 === null) t0 = now;
+    resampler.push(now, a.x / G, a.y / G, a.z / G);
   };
   window.addEventListener('devicemotion', handler);
   const timer = setTimeout(() => { if (!got) onNoData?.(); }, 2500); // desktops never fire

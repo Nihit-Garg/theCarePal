@@ -7,22 +7,19 @@ import { MODES } from '../engine/fusion.js';
 import { liveMotionSupported, requestMotionPermission, startLivePhone } from '../engine/livePhone.js';
 import { FallModel, loadConfig } from '../engine/model.js';
 import { notifyCaregiver } from '../engine/notify.js';
+import { scoresText, timeStr } from '../format.js';
 import { magnitude } from '../engine/signal.js';
 import { HeartRateSim, ScenarioPlayer, loadReplays } from '../engine/sim.js';
 import { useWakeLock } from '../engine/wakeLock.js';
 import { LANGS } from '../i18n.js';
 import { getIncidentStore } from '../incidents/index.js';
-import { COUNTDOWN_S, cancelIncident, createIncident, escalateIncident } from '../incidents/model.js';
+import { COUNTDOWN_S, STATUS, cancelIncident, createIncident, escalateIncident } from '../incidents/model.js';
 import { usePref } from '../prefs.js';
 import { uid } from '../uid.js';
 
 export const PERSON = 'Asha (demo)';
 const TABLE_POSE = [0.01, 0.02, 1.0];
 const TRACE_S = 25;
-
-function timeStr(d = new Date()) {
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-}
 
 /** Where each device's numbers are coming from right now — never leave the viewer guessing. */
 function sourceLabel(clip, { synthetic }) {
@@ -50,6 +47,7 @@ export default function PersonView({ embedded = false }) {
   const [lang, setLang] = usePref('lang', 'en');
   const [fx, setFx] = usePref('alertFx', { sound: true, voice: true });
   const [incStore, setIncStore] = useState(null);
+  const [replayMsg, setReplayMsg] = useState('');
   const [phoneResting, setPhoneResting] = useState(false); // detected by the engine, not the checkbox
 
   const engineRef = useRef(null);
@@ -69,16 +67,26 @@ export default function PersonView({ embedded = false }) {
     let cancelled = false;
     (async () => {
       try {
+        // Detection needs only the config + models. Replays (simulation) and the
+        // incident store load separately, so neither can delay or block detection.
         const c = await loadConfig();
-        const [phoneModel, wristModel, replays, st] = await Promise.all([
-          FallModel.load(c, 'phone'), FallModel.load(c, 'wrist'), loadReplays(), getIncidentStore(),
-        ]);
+        const [phoneModel, wristModel] = await Promise.all([FallModel.load(c, 'phone'), FallModel.load(c, 'wrist')]);
+        let replays = [];
+        try {
+          replays = await loadReplays();
+        } catch (err) {
+          setReplayMsg(`Demo recordings unavailable (${err.message}) — use “This phone”.`);
+        }
         if (cancelled) return;
         engineRef.current = new FallEngine(c, { phone: phoneModel, wrist: wristModel });
-        const player = new ScenarioPlayer(replays, c.fs);
-        player.onClipStart = setClip;
-        playerRef.current = player;
-        setIncStore(st);
+        if (replays.length) {
+          const player = new ScenarioPlayer(replays, c.fs);
+          player.onClipStart = setClip;
+          playerRef.current = player;
+        } else {
+          setWearable({ connected: false, worn: true });
+          setPhone({ source: 'off', onTable: false });
+        }
         setCfg(c);
         setClips(replays);
         setBoot({ state: 'ready' });
@@ -87,6 +95,12 @@ export default function PersonView({ embedded = false }) {
       }
     })();
     return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    getIncidentStore().then((st) => alive && setIncStore(st));
+    return () => { alive = false; };
   }, []);
 
   // ---- follow the current incident (a caregiver may acknowledge it from another device) --
@@ -98,13 +112,31 @@ export default function PersonView({ embedded = false }) {
     });
   }, [incStore]);
 
-  const saveIncident = useCallback(async (inc) => {
+  /** Create the incident; returns false if it couldn't be stored. */
+  const createInc = useCallback(async (inc) => {
     incRef.current = inc;
     setIncident(inc);
-    try {
-      await incStore.put(inc);
-    } catch (err) {
+    if (!incStore) { addLog('error', 'Incident store not ready — the caregiver screen will not see this alert'); return false; }
+    try { await incStore.create(inc); return true; } catch (err) {
       addLog('error', `Could not save the incident: ${err.message}`);
+      return false;
+    }
+  }, [incStore, addLog]);
+
+  /** Apply a person-side transition only if the incident is still counting down —
+   * a caregiver may already have acknowledged it (e.g. this phone was frozen in the
+   * background). Never throws: the alert UI must keep working whatever the store says. */
+  const transition = useCallback(async (fn) => {
+    const id = incRef.current?.id;
+    if (!id || !incStore) return false;
+    try {
+      const next = await incStore.update(id, (cur) => (cur.status === STATUS.COUNTDOWN ? fn(cur) : cur));
+      incRef.current = next;
+      setIncident(next);
+      return true;
+    } catch (err) {
+      addLog('error', `Could not update the incident: ${err.message}`);
+      return false;
     }
   }, [incStore, addLog]);
 
@@ -125,17 +157,17 @@ export default function PersonView({ embedded = false }) {
       if (type === 'alarm') {
         engine.suspended = true;
         setHrRise(null);
-        saveIncident(createIncident({ person: PERSON, alarm: data }));
+        createInc(createIncident({ person: PERSON, alarm: data }));
         setAlert({ ...data, status: 'counting', startedAt: Date.now(), modeLabel: data.mode.label });
         addLog('alarm', `Possible fall — ${data.reason}`);
       }
       if (type === 'error') addLog('error', data.message);
     });
-  }, [boot.state, addLog, saveIncident]);
+  }, [boot.state, addLog, createInc]);
 
   // ---- simulation clock (20 Hz) ------------------------------------------------------
   useEffect(() => {
-    if (boot.state !== 'ready') return;
+    if (boot.state !== 'ready' || !playerRef.current) return;
     const engine = engineRef.current, player = playerRef.current, fs = cfg.fs;
     const hrSim = new HeartRateSim();
     const start = performance.now() / 1000;
@@ -208,28 +240,33 @@ export default function PersonView({ embedded = false }) {
     const a = alert;
     if (!a || a.status !== 'counting') return;
     const rise = engineRef.current.hrRiseSince(a.t, a.hrBaseline);
-    const scores = Object.entries(a.scores).filter(([, c]) => c)
-      .map(([id, c]) => `${id === 'wrist' ? 'wearable' : 'phone'} ${Math.round(c.p * 100)}%`).join(', ');
     const message = [
       `⚠️ Possible fall: ${PERSON}`,
-      `Time: ${timeStr(new Date(a.startedAt))}`,
-      `Sensor: ${a.modeLabel} (${scores})`,
+      `Time: ${timeStr(a.startedAt)}`,
+      `Sensor: ${a.modeLabel} (${scoresText(a.scores, ', ')})`,
       rise != null ? `Heart rate: ${rise >= 0 ? '+' : ''}${Math.round(rise)} bpm after impact` : 'Heart rate: not available',
       why === 'help' ? 'They pressed "Get help now".' : `No response within ${COUNTDOWN_S} seconds.`,
       'Please check on them now. (Automated alert — not a medical diagnosis.)',
     ].join('\n');
-    setAlert({ ...a, status: 'notified', message, notifyResult: 'Sending…' });
-    if (incRef.current) await saveIncident(escalateIncident(incRef.current, { reason: why, hrRise: rise, message }));
-    const result = await notifyCaregiver({ person: PERSON, message, alert: { ...a, hrRise: rise } });
-    setAlert((cur) => cur && { ...cur, notifyResult: `Shown on the Caregiver screen (${incStore.label}). ${result}` });
-    addLog('notify', `Caregiver notified (${why === 'help' ? 'help requested' : 'no response'})`);
-  }, [alert, addLog, saveIncident, incStore]);
+    setAlert({ ...a, status: 'notified', delivery: 'sending', message, notifyResult: '' });
+    // Both channels in parallel: a dead network for one must not block the other.
+    const [stored, hook] = await Promise.all([
+      transition((cur) => escalateIncident(cur, { reason: why, hrRise: rise, message })),
+      notifyCaregiver({ person: PERSON, message, alert: { ...a, hrRise: rise } }),
+    ]);
+    const delivered = stored || hook.status === 'sent';
+    const where = stored ? `Caregiver screen: ${incStore.label}.` : 'Caregiver screen: not reached.';
+    setAlert((cur) => cur && { ...cur, delivery: delivered ? 'sent' : 'failed', notifyResult: `${where} ${hook.text}` });
+    addLog(delivered ? 'notify' : 'error', delivered
+      ? `Caregiver alerted (${why === 'help' ? 'help requested' : 'no response'})`
+      : 'Could not reach any caregiver channel');
+  }, [alert, addLog, transition, incStore]);
 
   const onCancel = useCallback(() => {
-    if (incRef.current) saveIncident(cancelIncident(incRef.current));
+    transition(cancelIncident); // recorded as "person OK", not as a false alarm
     addLog('cancel', 'Alert cancelled — person is OK');
     endAlert();
-  }, [addLog, endAlert, saveIncident]);
+  }, [addLog, endAlert, transition]);
   const onExpire = useCallback(() => notify('timeout'), [notify]);
   const onHelpNow = useCallback(() => notify('help'), [notify]);
 
@@ -243,6 +280,9 @@ export default function PersonView({ embedded = false }) {
     try {
       await requestMotionPermission();
       setPhone((p) => ({ ...p, source: 'live' }));
+      // Real data must not be fused with (or recorded alongside) the simulated watch.
+      setWearable((w) => ({ ...w, connected: false }));
+      addLog('mode', 'Using this phone\'s real sensor — simulated wearable disconnected');
     } catch (e) {
       setLiveMsg(e.message);
     }
@@ -319,6 +359,7 @@ export default function PersonView({ embedded = false }) {
           {phone.source === 'live' && wakeLock === 'on' && <p className="small muted">Screen kept awake so the sensor keeps streaming.</p>}
           {phone.source === 'live' && ['unsupported', 'error'].includes(wakeLock) && <p className="small warn-text">Keep the screen on — browsers pause sensors when it locks.</p>}
           {liveMsg && <p className="small error">{liveMsg}</p>}
+          {replayMsg && <p className="small error">{replayMsg}</p>}
         </article>
       </section>
       {mode === MODES.NONE && <p className="warn">No sensor is active — falls cannot be detected right now.</p>}

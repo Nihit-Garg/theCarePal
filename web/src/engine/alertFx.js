@@ -14,7 +14,7 @@ export function unlockAudio() {
   }
 }
 
-function beep(freq, startAt, dur, gain = 0.25) {
+function beep(freq, startAt, dur, gain = 0.25, nodes = null) {
   const osc = ctx.createOscillator();
   const g = ctx.createGain();
   osc.type = 'square';
@@ -26,6 +26,8 @@ function beep(freq, startAt, dur, gain = 0.25) {
   osc.connect(g).connect(ctx.destination);
   osc.start(startAt);
   osc.stop(startAt + dur);
+  nodes?.add(osc);
+  osc.onended = () => nodes?.delete(osc);
 }
 
 export function speak(text, lang) {
@@ -43,11 +45,13 @@ export function speak(text, lang) {
 export function startAlarm({ sound = true, voice = true, text = '', lang = 'en-IN' } = {}) {
   let stopped = false;
   const timers = [];
+  const nodes = new Set(); // scheduled oscillators, so stop() can silence them immediately
   if (sound && ctx) {
     const ring = () => {
       if (stopped) return;
+      if (ctx.state !== 'running') ctx.resume(); // e.g. iOS suspended it in the background
       const t0 = ctx.currentTime + 0.02;
-      beep(988, t0, 0.18); beep(740, t0 + 0.22, 0.18); beep(988, t0 + 0.44, 0.18);
+      beep(988, t0, 0.18, 0.25, nodes); beep(740, t0 + 0.22, 0.18, 0.25, nodes); beep(988, t0 + 0.44, 0.18, 0.25, nodes);
       timers.push(setTimeout(ring, 1600));
     };
     ring();
@@ -60,6 +64,7 @@ export function startAlarm({ sound = true, voice = true, text = '', lang = 'en-I
   return () => {
     stopped = true;
     timers.forEach(clearTimeout);
+    for (const osc of nodes) { try { osc.stop(); } catch { /* already stopped */ } }
     navigator.vibrate?.(0);
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   };

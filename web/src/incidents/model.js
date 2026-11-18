@@ -6,9 +6,11 @@
 //       └──────► escalated ──► acknowledged ──► resolved (outcome: fall | false_alarm | unsure)
 //                (timeout or "Get help now")  (a caregiver is on it)
 //
-// Outcomes are the feedback loop: every resolved incident is a labelled example
-// (real fall or false alarm) the ops team can review and later use to tune
-// thresholds per person.
+// Outcomes are the feedback loop: every incident a caregiver resolves is a labelled
+// example (real fall or false alarm) for reviewing and later tuning thresholds per
+// person. A person's own "I'm OK" is recorded as `person_ok` — NOT as a false alarm:
+// people often fall and are fine, so treating cancellations as false alarms would
+// bias tuning towards missing real falls.
 
 import { uid } from '../uid.js';
 
@@ -31,12 +33,12 @@ export const OUTCOMES = {
 
 const event = (type, text, at = Date.now()) => ({ at, type, text });
 
-function pct(p) { return p == null ? null : Math.round(p * 100) / 100; }
+function round2(p) { return p == null ? null : Math.round(p * 100) / 100; }
 
 /** Create an incident from an engine 'alarm' event. */
 export function createIncident({ person, alarm, now = Date.now(), id = uid() }) {
   const scores = {};
-  for (const [dev, c] of Object.entries(alarm.scores || {})) if (c) scores[dev] = pct(c.p);
+  for (const [dev, c] of Object.entries(alarm.scores || {})) if (c) scores[dev] = round2(c.p);
   return {
     id,
     person,
@@ -60,7 +62,7 @@ function assertStatus(inc, allowed, action) {
 export function cancelIncident(inc, now = Date.now()) {
   assertStatus(inc, [STATUS.COUNTDOWN], 'cancel');
   return { ...inc, status: STATUS.CANCELLED, updatedAt: now,
-    resolution: { outcome: 'false_alarm', by: inc.person, note: 'Cancelled by the person ("I\'m OK")', at: now },
+    resolution: { outcome: 'person_ok', by: inc.person, note: 'Cancelled by the person ("I\'m OK") — unconfirmed', at: now },
     events: [...inc.events, event('cancelled', 'Person tapped "I\'m OK"', now)] };
 }
 
@@ -121,7 +123,7 @@ export function incidentStats(incidents, { sinceMs = 7 * 24 * 3600 * 1000, now =
   const cancelled = recent.filter((i) => i.status === STATUS.CANCELLED).length;
   const resolved = recent.filter((i) => i.status === STATUS.RESOLVED);
   const falls = resolved.filter((i) => i.resolution.outcome === 'fall').length;
-  const falseAlarms = resolved.filter((i) => i.resolution.outcome === 'false_alarm').length + cancelled;
+  const falseAlarms = resolved.filter((i) => i.resolution.outcome === 'false_alarm').length;
   const ackTimes = recent.filter((i) => i.ack && i.escalation).map((i) => (i.ack.at - i.escalation.at) / 1000);
   return {
     total: recent.length,

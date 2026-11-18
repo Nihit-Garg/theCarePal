@@ -102,7 +102,7 @@ try {
   // Hindi alert
   await page.getByRole('radio', { name: 'हिन्दी' }).click();
   await page.locator('.chip.fall').nth(2).click();
-  await page.getByText('गिरने का पता चला है').waitFor({ timeout: 20000 });
+  await page.getByText('शायद आप गिर गए हैं').waitFor({ timeout: 20000 });
   await page.screenshot({ path: `${OUT}/7-alert-hindi.png` });
   await page.getByRole('button', { name: 'मैं ठीक हूँ' }).click();
   check('alert in Hindi', true);
